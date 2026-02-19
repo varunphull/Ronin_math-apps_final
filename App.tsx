@@ -6,7 +6,7 @@ import CodeViewer from './components/CodeViewer';
 import HistorySidebar from './components/HistorySidebar';
 import { generateVisualizationCode } from './services/geminiService';
 import { HistoryItem, ViewMode } from './types';
-import { Code, Eye, PanelRightClose, PanelRightOpen, AlertCircle } from 'lucide-react';
+import { Code, Eye, PanelRightClose, PanelRightOpen, AlertCircle, Calendar, Hash, MessageSquare } from 'lucide-react';
 
 const App: React.FC = () => {
   const [currentCode, setCurrentCode] = useState<string | null>(null);
@@ -119,6 +119,26 @@ const App: React.FC = () => {
             >
                 {showHistory ? <PanelRightClose size={20} /> : <PanelRightOpen size={20} />}
             </button>
+          </div>
+
+          {/* Status Bar */}
+          <div className="px-6 py-2 flex items-center gap-4 bg-slate-950 border-b border-slate-800 text-xs text-slate-400 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <Calendar size={12} className="text-slate-500" />
+              <span>{new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Hash size={12} className="text-slate-500" />
+              <span>{history.length} prompt{history.length !== 1 ? 's' : ''} generated</span>
+            </div>
+            {currentPrompt && (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <MessageSquare size={12} className="text-indigo-400 shrink-0" />
+                <span className="text-indigo-300 truncate max-w-xs" title={currentPrompt}>
+                  {currentPrompt}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Canvas/Workspace */}
