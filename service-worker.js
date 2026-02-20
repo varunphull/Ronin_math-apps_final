@@ -1,6 +1,6 @@
 // Ronin's Maths Tool — Service Worker
 // Version bump this string to force cache refresh after updates
-const CACHE_NAME = 'ronins-maths-v3.0';
+const CACHE_NAME = 'ronins-maths-v4.0';
 
 // All files to cache for offline use
 const CACHE_FILES = [
