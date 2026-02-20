@@ -4,6 +4,23 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Ronin's Maths Interactive Tool</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- iOS PWA support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MathsTool">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- Android / Theme -->
+  <meta name="theme-color" content="#6366f1">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- SEO / Share -->
+  <meta name="description" content="Cambridge IGCSE Year 7/8 interactive maths tool — geometry, algebra, stats and probability.">
+
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -97,7 +114,7 @@ const S={
   mid:{A:{x:-5,y:-3},B:{x:5,y:4}},
   bear:{A:{x:0,y:0},B:{x:4,y:6},mode:'forward'},
   area:{shape:'triangle',triA:{x:-5,y:-4},triB:{x:5,y:-4},triC:{x:0,y:5},rectA:{x:-4,y:-3},rectB:{x:4,y:4}},
-  prism:{base:6,height:4,depth:8,shape:'triangular',showNet:false,sides:5},
+  prism:{base:6,height:4,depth:8,shape:'triangular',showNet:false,sides:5,cylR:5,coneR:4,sphereR:5,cuboidW:5},
   linear:{m:1,c:0},
   unit:{value:10,dir:'mi2km'},
   trans:{type:'translate',shape:[{x:-3,y:-2},{x:1,y:-2},{x:1,y:2},{x:-1,y:3}],tx:3,ty:2,angle:90,cw:true,cx:0,cy:0,sf:2,mirrorLine:'x-axis'},
@@ -115,6 +132,10 @@ const S={
   stemleaf:{data:'12,15,18,21,23,25,27,31,34,35,38,42,45'},
   freqdiag:{classes:['0-10','10-20','20-30','30-40','40-50'],freqs:[3,8,12,7,4],mode:'histogram'},
   quiz:{active:false,q:null,userAns:'',result:null,score:0,total:0},
+  // NEW CLASS 7 MODULES
+  integers:{start:-3,change:5,mode:'add',animStep:0,animPlaying:false},
+  fractions:{modeTab:'equivalent',num1:1,den1:2,num2:1,den2:3,eqNum:1,eqDen:2,eqMult:2,cols:4,rows:3},
+  angles:{mode:'parallel',angleA:55,showReasons:false,quizMode:false,quizAnswer:'',quizResult:null,quizTarget:'b'},
 };
 
 // ═══════════════════════════════════════════════════
@@ -134,6 +155,7 @@ const CATEGORIES={
       {icon:'📦',title:'3D Surface Area',page:'prisms',tag:'Ch15'},
       {icon:'⭕',title:'Circles',page:'circles',tag:'Ch15'},
       {icon:'↔️',title:'Miles ↔ Km',page:'units',tag:'Ch15'},
+      {icon:'📐',title:'Angle Reasoning',page:'angles',tag:'Ch6'},
     ]
   },
   algebra:{
@@ -145,6 +167,8 @@ const CATEGORIES={
       {icon:'🔢',title:'Nth Term',page:'nth',tag:'Ch11'},
       {icon:'%',title:'Percentages',page:'percentages',tag:'Ch10'},
       {icon:'⚖️',title:'Ratio & Proportion',page:'ratio',tag:'Ch12'},
+      {icon:'➖',title:'Integers & Negatives',page:'integers',tag:'Ch1'},
+      {icon:'½',title:'Fractions Visual',page:'fractions',tag:'Ch3'},
     ]
   },
   stats:{
@@ -433,6 +457,21 @@ function generateQuestion(page){
       const shareA=total*a/(a+b);
       return{question:`Share ${total} in the ratio ${a}:${b}. What is the larger share?`,answer:String(Math.max(shareA,total-shareA)),explanation:`1 part = ${total}÷${a+b}=${total/(a+b)}. Shares: ${shareA} and ${total-shareA}`};
     },
+    integers:function(){
+      const a=rand(-10,10),b=rand(-10,10);
+      const ans=a+b;
+      return{question:`Calculate: ${a} + (${b})`,answer:String(ans),explanation:`${a} + (${b}) = ${ans}. ${b<0?'Adding a negative = moving left on number line':'Moving right on number line'}`};
+    },
+    angles:function(){
+      const base=rand(30,80);
+      const types=[
+        {q:`Two angles on a straight line. One angle is ${base}°. Find the other.`,a:String(180-base),e:`Angles on a straight line sum to 180°. 180 - ${base} = ${180-base}°`},
+        {q:`Vertically opposite angles. One is ${base}°. Find the opposite.`,a:String(base),e:`Vertically opposite angles are equal. Answer = ${base}°`},
+        {q:`Angles in a triangle: ${base}° and ${base+10}°. Find the third.`,a:String(180-base-(base+10)),e:`Angles in triangle sum to 180°. 180 - ${base} - ${base+10} = ${180-base-base-10}°`},
+      ];
+      const t=types[rand(0,2)];
+      return{question:t.q,answer:t.a,explanation:t.e};
+    },
   };
   const fn=qs[page]||qs.linear;
   return fn();
@@ -519,7 +558,8 @@ function renderGradient(){
   const{A,B}=S.grad;
   const svA=toSVG(A.x,A.y),svB=toSVG(B.x,B.y);
   const dx=B.x-A.x,dy=B.y-A.y;
-  const m=dx===0?'∞':r2(dy/dx);
+  const samePoint=(dx===0&&dy===0);
+  const m=samePoint?'—':dx===0?'∞':r2(dy/dx);
   let lx1=0,ly1,lx2=W,ly2;
   if(dx===0){lx1=lx2=svA.sx;ly1=0;ly2=H;}
   else{const sl=-dy/dx;ly1=svA.sy+sl*(svA.sx-lx1);ly2=svA.sy+sl*(svA.sx-lx2);}
@@ -535,7 +575,7 @@ function renderGradient(){
   return pageWrap('Finding Gradient','📈','Drag A and B to see the gradient update in real-time.',`
     <div class="two-col">${makeSVG(inner,'svg-grad')}
       <div class="ctrl-col">
-        ${fbox('Gradient','m = (y₂−y₁) / (x₂−x₁)',m==='∞'?'Undefined':m,'indigo')}
+        ${fbox('Gradient','m = (y₂−y₁) / (x₂−x₁)',samePoint?'⚠ Same point':m==='∞'?'Undefined (vertical)':m,'indigo')}
         ${fbox('Rise Δy','y₂ − y₁',dy,'emerald')}
         ${fbox('Run Δx','x₂ − x₁',dx,'amber')}
         ${steps([{t:'Label points',c:'A=('+A.x+','+A.y+'), B=('+B.x+','+B.y+')'},{t:'Rise Δy',c:B.y+'-'+A.y+'='+dy},{t:'Run Δx',c:B.x+'-'+A.x+'='+dx},{t:'Gradient m',c:dy+'/'+dx+' = '+m}])}
@@ -614,7 +654,8 @@ function renderArea(){
     const A=s.triA,B=s.triB,C=s.triC;
     const svA=toSVG(A.x,A.y),svB=toSVG(B.x,B.y),svC=toSVG(C.x,C.y);
     const area=r2(Math.abs(A.x*(B.y-C.y)+B.x*(C.y-A.y)+C.x*(A.y-B.y))/2);
-    inner=`<polygon points="${svA.sx},${svA.sy} ${svB.sx},${svB.sy} ${svC.sx},${svC.sy}" fill="#f59e0b" fill-opacity=".12" stroke="#f59e0b" stroke-width="2"/>
+    const collinear=area===0;
+    inner=`${collinear?'<text x="200" y="30" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="700" font-family="Space Grotesk">⚠ Points are collinear — no triangle formed</text>':''}<polygon points="${svA.sx},${svA.sy} ${svB.sx},${svB.sy} ${svC.sx},${svC.sy}" fill="#f59e0b" fill-opacity=".12" stroke="#f59e0b" stroke-width="2"/>
       ${dragDot(svA.sx,svA.sy,'#818cf8','A('+A.x+','+A.y+')','area-tA')}
       ${dragDot(svB.sx,svB.sy,'#34d399','B('+B.x+','+B.y+')','area-tB')}
       ${dragDot(svC.sx,svC.sy,'#f59e0b','C('+C.x+','+C.y+')','area-tC')}`;
@@ -738,8 +779,13 @@ function renderPercentages(){
     stepArr=[{t:'Convert %',c:pct+'÷100='+pct/100},{t:'Multiply',c:pct/100+'×'+orig+'='+result}];
   } else {
     const mult=dir==='increase'?1+pct/100:1-pct/100;
-    result=r2(orig/mult);formula=dir==='increase'?orig+'÷(1+'+pct+'/100)':orig+'÷(1−'+pct+'/100)';
-    stepArr=[{t:'Multiplier',c:dir==='increase'?'1+'+pct+'/100='+mult:'1−'+pct+'/100='+mult},{t:'Divide to reverse',c:orig+'÷'+mult+'='+result},{t:'Original was',c:''+result}];
+    if(mult===0){
+      result='∞';formula='Cannot reverse a 100% decrease (original was 0)';
+      stepArr=[{t:'Error',c:'A 100% decrease means the value became 0. Cannot reverse — dividing by zero.'},{t:'Tip',c:'Try a percentage less than 100%'}];
+    } else {
+      result=r2(orig/mult);formula=dir==='increase'?orig+'÷(1+'+pct+'/100)':orig+'÷(1−'+pct+'/100)';
+      stepArr=[{t:'Multiplier',c:dir==='increase'?'1+'+pct+'/100='+mult:'1−'+pct+'/100='+mult},{t:'Divide to reverse',c:orig+'÷'+mult+'='+result},{t:'Original was',c:''+result}];
+    }
   }
   return pageWrap('Percentages','%','Percentage increase, decrease, amount and reverse.',`
     ${tabs([['new','New Value'],['change','% Amount'],['reverse','Reverse %']],findType,"S.pct.findType=__V__;rerender()")}
@@ -822,6 +868,21 @@ function renderProbability(){
   const colorNames=Object.keys(colorMap);
   const counts={};balls.forEach(function(b){counts[b]=(counts[b]||0)+1;});
   const total=balls.length;
+  if(mode!=='twodice'&&total===0){
+    return pageWrap('Probability','🎲','Single events, complementary probabilities, two-dice combined events.',`
+      ${tabs([['single','Single Event'],['complementary','Complementary'],['twodice','Two Dice']],mode,"S.prob.mode=__V__;rerender()")}
+      <div class="info-box" style="text-align:center;padding:32px">
+        <div style="font-size:32px;margin-bottom:12px">🎱</div>
+        <div style="font-size:15px;color:#f59e0b;font-weight:700;margin-bottom:8px">Bag is empty!</div>
+        <div style="font-size:13px;color:#64748b">Add some balls using the buttons below</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px">
+        ${Object.keys({red:'#f43f5e',blue:'#6366f1',green:'#10b981',yellow:'#f59e0b',purple:'#a78bfa'}).map(function(col){
+          const cm={red:'#f43f5e',blue:'#6366f1',green:'#10b981',yellow:'#f59e0b',purple:'#a78bfa'};
+          return '<button class="btn" style="background:'+cm[col]+'22;border:1px solid '+cm[col]+'55;color:'+cm[col]+';padding:8px 16px;font-size:13px" onclick="S.prob.balls.push(\''+col+'\');rerender()">+ '+col+'</button>';
+        }).join('')}
+      </div>`,'probability');
+  }
 
   function twoDiceHTML(){
     const dice=[1,2,3,4,5,6];
@@ -985,7 +1046,7 @@ function renderPrisms(){
 
   // ────── CUBOID ──────
   if(shape==='cuboid'){
-    const l=b,w=Math.max(1,Math.round(d*0.6)),ht=h;
+    const l=b,w=S.prism.cuboidW,ht=h;
     const sa=r2(2*(l*w+l*ht+w*ht)),vol=r2(l*w*ht);
     const pcx=200,pcy=190,sc2=16,doff=d*7;
     const fl={x:pcx-l*sc2/2,y:pcy},fr={x:pcx+l*sc2/2,y:pcy};
@@ -1022,8 +1083,8 @@ function renderPrisms(){
           <button class="btn-action" style="margin-top:12px;width:100%" onclick="S.prism.showNet=!S.prism.showNet;rerender()">${showNet?'🔲 Show 3D':'📐 Unfold Net'}</button>
         </div>
         <div class="ctrl-col">
-          <div class="card">${SI('Length (l)','#f59e0b',l,1,14,1,'prism','base')}${SI('Height (h)','#10b981',ht,1,12,1,'prism','height')}${SI('Depth (d)','#f43f5e',d,1,15,1,'prism','depth')}</div>
-          ${fbox('Surface Area','2(lw+lh+wh)',sa+' cm²','indigo')}${fbox('Volume','l × w × h',vol+' cm³','emerald')}
+          <div class="card">${SI('Length (l)','#f59e0b',l,1,14,1,'prism','base')}${SI('Width (w)','#818cf8',w,1,12,1,'prism','cuboidW')}${SI('Height (h)','#10b981',ht,1,12,1,'prism','height')}</div>
+          ${fbox('Surface Area','2(lw+lh+wh)',sa+' cm²','indigo')}${fbox('Volume','l × w × h',r2(l*w*ht)+' cm³','emerald')}
           ${steps([{t:'Top & bottom',c:'2×'+l+'×'+w+'='+2*l*w},{t:'Front & back',c:'2×'+l+'×'+ht+'='+2*l*ht},{t:'Left & right',c:'2×'+w+'×'+ht+'='+2*w*ht},{t:'Total SA',c:''+sa+' cm²'}])}
         </div>
       </div>`,'geometry');
@@ -1031,7 +1092,7 @@ function renderPrisms(){
 
   // ────── CYLINDER ──────
   if(shape==='cylinder'){
-    const r=Math.max(1,Math.round(b/2));
+    const r=S.prism.cylR;
     const sa=r2(2*Math.PI*r*r+2*Math.PI*r*h);
     const vol=r2(Math.PI*r*r*h);
     const curvedSA=r2(2*Math.PI*r*h),circSA=r2(2*Math.PI*r*r);
@@ -1062,7 +1123,7 @@ function renderPrisms(){
           <button class="btn-action" style="margin-top:12px;width:100%" onclick="S.prism.showNet=!S.prism.showNet;rerender()">${showNet?'🔲 Show 3D':'📐 Unfold Net'}</button>
         </div>
         <div class="ctrl-col">
-          <div class="card">${SI('Radius (r)','#f59e0b',r,1,10,1,'prism','base')}${SI('Height (h)','#10b981',h,1,14,1,'prism','height')}</div>
+          <div class="card">${SI('Radius (r)','#f59e0b',r,1,12,0.5,'prism','cylR')}${SI('Height (h)','#10b981',h,1,14,0.5,'prism','height')}</div>
           ${fbox('Total SA','2πr² + 2πrh',sa+' cm²','indigo')}
           ${fbox('Curved SA','2πrh',curvedSA+' cm²','amber')}
           ${fbox('Volume','π × r² × h',vol+' cm³','emerald')}
@@ -1073,7 +1134,7 @@ function renderPrisms(){
 
   // ────── CONE ──────
   if(shape==='cone'){
-    const r=Math.max(1,Math.round(b/2));
+    const r=S.prism.coneR;
     const slant=r2(Math.sqrt(r*r+h*h));
     const sa=r2(Math.PI*r*r+Math.PI*r*slant);
     const vol=r2((1/3)*Math.PI*r*r*h);
@@ -1094,7 +1155,7 @@ function renderPrisms(){
       <div class="two-col">
         <div>${diagram}</div>
         <div class="ctrl-col">
-          <div class="card">${SI('Radius (r)','#f59e0b',r,1,10,1,'prism','base')}${SI('Height (h)','#10b981',h,1,14,1,'prism','height')}
+          <div class="card">${SI('Radius (r)','#f59e0b',r,1,12,0.5,'prism','coneR')}${SI('Height (h)','#10b981',h,1,14,0.5,'prism','height')}
             <div style="font-size:12px;color:#475569;margin-top:4px">Slant height l = √(r²+h²) = ${slant}</div>
           </div>
           ${fbox('Total SA','πr² + πrl',sa+' cm²','indigo')}
@@ -1107,7 +1168,7 @@ function renderPrisms(){
 
   // ────── SPHERE ──────
   if(shape==='sphere'){
-    const r=Math.max(1,Math.round(b/2));
+    const r=S.prism.sphereR;
     const sa=r2(4*Math.PI*r*r);
     const vol=r2((4/3)*Math.PI*r*r*r);
     const pcx=200,pcy=160,svR=r*22;
@@ -1122,7 +1183,7 @@ function renderPrisms(){
       <div class="two-col">
         <div>${diagram}</div>
         <div class="ctrl-col">
-          <div class="card">${SI('Radius (r)','#f59e0b',r,1,10,1,'prism','base')}</div>
+          <div class="card">${SI('Radius (r)','#f59e0b',r,1,12,0.5,'prism','sphereR')}</div>
           ${fbox('Surface Area','4 × π × r²',sa+' cm²','indigo')}
           ${fbox('Volume','⁴⁄₃ × π × r³',vol+' cm³','emerald')}
           ${fbox('Diameter','2r',r2(2*r)+' cm','amber')}
@@ -1213,23 +1274,85 @@ function renderPrisms(){
 // ═══════════════════════════════════════════════════
 // TRANSFORMATIONS
 // ═══════════════════════════════════════════════════
+// ── Transformation calculation (pure, no side effects) ──
+function calcTransform(shape,type,tx,ty,angle,cw,rcx,rcy,sf,mirrorLine){
+  const rad=angle*Math.PI/180*(cw?-1:1);
+  if(type==='translate') return shape.map(function(p){return{x:r1(p.x+tx),y:r1(p.y+ty)};});
+  if(type==='reflect'){
+    if(mirrorLine==='x-axis') return shape.map(function(p){return{x:p.x,y:-p.y};});
+    if(mirrorLine==='y-axis') return shape.map(function(p){return{x:-p.x,y:p.y};});
+    if(mirrorLine==='y=x') return shape.map(function(p){return{x:p.y,y:p.x};});
+    if(mirrorLine==='y=-x') return shape.map(function(p){return{x:-p.y,y:-p.x};});
+    if(mirrorLine.startsWith('x=')){const a=parseFloat(mirrorLine.slice(2));return shape.map(function(p){return{x:r1(2*a-p.x),y:p.y};});}
+    if(mirrorLine.startsWith('y=')){const b2=parseFloat(mirrorLine.slice(2));return shape.map(function(p){return{x:p.x,y:r1(2*b2-p.y)};});}
+  }
+  if(type==='rotate') return shape.map(function(p){return{x:r1((p.x-rcx)*Math.cos(rad)-(p.y-rcy)*Math.sin(rad)+rcx),y:r1((p.x-rcx)*Math.sin(rad)+(p.y-rcy)*Math.cos(rad)+rcy)};});
+  if(type==='enlarge') return shape.map(function(p){return{x:r1(rcx+(p.x-rcx)*sf),y:r1(rcy+(p.y-rcy)*sf)};});
+  return shape;
+}
+
+// ── SVG polygon point string from math coords ──
+function mathPtsToSVG(pts){
+  return pts.map(function(p){const s=toSVG(p.x,p.y);return s.sx+','+s.sy;}).join(' ');
+}
+
+// ── Animate transformation (ease-out, 500ms) ──
+function animateTransformation(fromPts,toPts,duration){
+  duration=duration||500;
+  const startTime=performance.now();
+  const img=document.getElementById('trans-image');
+  const ghost=document.getElementById('trans-ghost');
+  const coordBody=document.getElementById('trans-coord-body');
+  if(!img)return;
+
+  function easeOut(t){return t*(2-t);}  // ease-out quad
+
+  function frame(now){
+    const raw=Math.min((now-startTime)/duration,1);
+    const t=easeOut(raw);
+    // Interpolate in math space
+    const interp=fromPts.map(function(p,i){
+      return{x:p.x+(toPts[i].x-p.x)*t, y:p.y+(toPts[i].y-p.y)*t};
+    });
+    img.setAttribute('points',mathPtsToSVG(interp));
+    // Update coord table during animation
+    if(coordBody){
+      coordBody.innerHTML=toPts.map(function(p,i){
+        const prog={x:r1(fromPts[i].x+(toPts[i].x-fromPts[i].x)*t),y:r1(fromPts[i].y+(toPts[i].y-fromPts[i].y)*t)};
+        return '<tr><td>P'+(i+1)+'</td><td style="color:#818cf8">('+fromPts[i].x+', '+fromPts[i].y+')</td><td style="color:#34d399">('+prog.x+', '+prog.y+')</td></tr>';
+      }).join('');
+    }
+    if(raw<1){requestAnimationFrame(frame);}
+    else{
+      img.setAttribute('points',mathPtsToSVG(toPts));
+      if(ghost)ghost.setAttribute('opacity','0.25');
+      if(coordBody){
+        coordBody.innerHTML=toPts.map(function(p,i){
+          return '<tr><td>P'+(i+1)+'</td><td style="color:#818cf8">('+fromPts[i].x+', '+fromPts[i].y+')</td><td style="color:#34d399">('+p.x+', '+p.y+')</td></tr>';
+        }).join('');
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── Rotation arc helper for SVG ──
+function rotationArcSVG(cx,cy,radius,angleDeg,cw){
+  const startDeg=cw?-90:-90+angleDeg;
+  const endDeg=cw?-90+angleDeg:-90;
+  const s=startDeg*Math.PI/180, e=endDeg*Math.PI/180;
+  const x1=cx+radius*Math.cos(s),y1=cy+radius*Math.sin(s);
+  const x2=cx+radius*Math.cos(e),y2=cy+radius*Math.sin(e);
+  const large=angleDeg>180?1:0;
+  const sweep=cw?1:0;
+  const arrowX=x2+(cw?-4:4),arrowY=y2+4;
+  return `<path d="M ${x1} ${y1} A ${radius} ${radius} 0 ${large} ${sweep} ${x2} ${y2}" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.8"/>
+    <text x="${(x1+x2)/2+(cw?18:-18)}" y="${Math.min(y1,y2)-8}" fill="#fbbf24" font-size="11" font-weight="700" font-family="Space Grotesk">${angleDeg}°</text>`;
+}
+
 function renderTransformations(){
   const{type,shape,tx,ty,angle,cw,cx:rcx,cy:rcy,sf,mirrorLine}=S.trans;
-  let transformed=[];
-  const rad=angle*Math.PI/180*(cw?-1:1);
-  if(type==='translate') transformed=shape.map(function(p){return{x:r1(p.x+tx),y:r1(p.y+ty)};});
-  else if(type==='reflect'){
-    if(mirrorLine==='x-axis') transformed=shape.map(function(p){return{x:p.x,y:-p.y};});
-    else if(mirrorLine==='y-axis') transformed=shape.map(function(p){return{x:-p.x,y:p.y};});
-    else if(mirrorLine==='y=x') transformed=shape.map(function(p){return{x:p.y,y:p.x};});
-    else if(mirrorLine==='y=-x') transformed=shape.map(function(p){return{x:-p.y,y:-p.x};});
-    else if(mirrorLine.startsWith('x=')){const a=parseFloat(mirrorLine.slice(2));transformed=shape.map(function(p){return{x:r1(2*a-p.x),y:p.y};});}
-    else if(mirrorLine.startsWith('y=')){const b2=parseFloat(mirrorLine.slice(2));transformed=shape.map(function(p){return{x:p.x,y:r1(2*b2-p.y)};});}
-  } else if(type==='rotate'){
-    transformed=shape.map(function(p){return{x:r1((p.x-rcx)*Math.cos(rad)-(p.y-rcy)*Math.sin(rad)+rcx),y:r1((p.x-rcx)*Math.sin(rad)+(p.y-rcy)*Math.cos(rad)+rcy)};});
-  } else if(type==='enlarge'){
-    transformed=shape.map(function(p){return{x:r1(rcx+(p.x-rcx)*sf),y:r1(rcy+(p.y-rcy)*sf)};});
-  }
+  const transformed=calcTransform(shape,type,tx,ty,angle,cw,rcx,rcy,sf,mirrorLine);
   const pts=shape.map(function(p){const s=toSVG(p.x,p.y);return s.sx+','+s.sy;}).join(' ');
   const tpts=transformed.map(function(p){const s=toSVG(p.x,p.y);return s.sx+','+s.sy;}).join(' ');
   let mirrorLineSVG='';
@@ -1243,9 +1366,24 @@ function renderTransformations(){
   }
   let centreSVG='';
   if(type==='rotate'||type==='enlarge'){const sc=toSVG(rcx,rcy);centreSVG=`<circle cx="${sc.sx}" cy="${sc.sy}" r="6" fill="#fbbf24" stroke="#fff" stroke-width="2"/><text x="${sc.sx+10}" y="${sc.sy-8}" fill="#fbbf24" font-size="11" font-weight="600" font-family="Space Grotesk">C(${rcx},${rcy})</text>`;}
+  // Rotation arc SVG
+  let rotArcSVG='';
+  if(type==='rotate'&&angle>0){
+    const sc2=toSVG(rcx,rcy);
+    // Draw arc from first vertex
+    const p0sv=toSVG(shape[0].x,shape[0].y);
+    const arcR=Math.sqrt(Math.pow(p0sv.sx-sc2.sx,2)+Math.pow(p0sv.sy-sc2.sy,2));
+    rotArcSVG=rotationArcSVG(sc2.sx,sc2.sy,Math.max(20,Math.min(80,arcR*0.5)),angle,cw);
+  }
+
   const inner=`${mirrorLineSVG}
+    <!-- Ghost: original shape outline -->
+    <polygon id="trans-ghost" points="${pts}" fill="none" stroke="#475569" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.5"/>
+    <!-- Object: original filled -->
     <polygon points="${pts}" fill="rgba(99,102,241,.15)" stroke="#818cf8" stroke-width="2" stroke-dasharray="6,4"/>
-    <polygon points="${tpts}" fill="rgba(16,185,129,.2)" stroke="#34d399" stroke-width="2.5"/>
+    <!-- Image: animated target -->
+    <polygon id="trans-image" points="${tpts}" fill="rgba(16,185,129,.2)" stroke="#34d399" stroke-width="2.5"/>
+    ${rotArcSVG}
     ${centreSVG}
     <text x="8" y="18" fill="#818cf8" font-size="11" font-weight="600" font-family="Space Grotesk">▣ Object</text>
     <text x="8" y="34" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">▣ Image</text>`;
@@ -1261,13 +1399,37 @@ function renderTransformations(){
     controls=SI('Scale factor','#818cf8',sf,0.5,4,.5,'trans','sf')+SI('Centre x','#f59e0b',rcx,-5,5,1,'trans','cx')+SI('Centre y','#f43f5e',rcy,-5,5,1,'trans','cy');
   }
   const desc={translate:'Translate by column vector ('+tx+' / '+ty+')',reflect:'Reflect in the line '+mirrorLine,rotate:'Rotate '+angle+'° '+(cw?'clockwise':'anticlockwise')+' about ('+rcx+','+rcy+')',enlarge:'Enlarge by SF '+sf+', centre ('+rcx+','+rcy+')'};
-  return pageWrap('2D Transformations','🔄','Translate, reflect, rotate, enlarge.',`
+  // Coordinate comparison table
+  const coordTable=`<div class="info-box" style="margin-top:14px">
+    <div class="info-label">Before & After Coordinates</div>
+    <table class="data-tbl" style="width:100%;margin-top:8px">
+      <tr><th>Point</th><th style="color:#818cf8">Object</th><th style="color:#34d399">Image</th></tr>
+      <tbody id="trans-coord-body">
+        ${shape.map(function(p,i){const t2=transformed[i];return '<tr><td>P'+(i+1)+'</td><td style="color:#818cf8">('+p.x+', '+p.y+')</td><td style="color:#34d399">('+t2.x+', '+t2.y+')</td></tr>';}).join('')}
+      </tbody>
+    </table>
+  </div>`;
+
+  return pageWrap('2D Transformations','🔄','Translate, reflect, rotate, enlarge. Hit Animate to see it move.',`
     ${tabs([['translate','Translate'],['reflect','Reflect'],['rotate','Rotate'],['enlarge','Enlarge']],type,"S.trans.type=__V__;rerender()")}
-    <div class="two-col">${makeSVG(inner,'svg-trans')}
+    <div class="two-col">
+      <div>
+        ${makeSVG(inner,'svg-trans')}
+        <button class="btn-action" style="margin-top:12px;width:100%" onclick="
+          var from=S.trans.shape;
+          var to=calcTransform(from,S.trans.type,S.trans.tx,S.trans.ty,S.trans.angle,S.trans.cw,S.trans.cx,S.trans.cy,S.trans.sf,S.trans.mirrorLine);
+          // Reset image to object first, then animate
+          var img=document.getElementById('trans-image');
+          var ghost=document.getElementById('trans-ghost');
+          if(img)img.setAttribute('points',mathPtsToSVG(from));
+          if(ghost){ghost.setAttribute('opacity','0.5');}
+          setTimeout(function(){animateTransformation(from,to,550);},80);
+        ">▶ Animate Transformation</button>
+      </div>
       <div class="ctrl-col">
         ${controls?`<div class="card">${controls}</div>`:''}
         ${fbox('Transformation',desc[type],'Blue → Green','indigo')}
-        <div class="info-box"><div class="info-label">Image Vertices</div>${transformed.map(function(p,i){return `<div style="font-size:13px;color:#94a3b8" class="mono">P${i+1}′: (${p.x}, ${p.y})</div>`;}).join('')}</div>
+        ${coordTable}
       </div>
     </div>`,'geometry');
 }
@@ -1283,7 +1445,7 @@ function renderNth(){
 
   if(nums.length>=2){
     const diffs=nums.slice(1).map(function(v,i){return v-nums[i];});
-    const isLinear=diffs.every(function(d){return Math.abs(d-diffs[0])<0.001;});
+    const isLinear=diffs.length>0&&diffs.every(function(d){return Math.abs(d-diffs[0])<0.001;});
     const d=diffs[0];
     const a=nums[0];
     const c=a-d; // y-intercept when n=1: a = d*1 + c => c = a - d
@@ -1322,7 +1484,11 @@ function renderNth(){
       ${steps([{t:'Common diff d',c:'d = u₂−u₁ = '+nums[1]+'−'+nums[0]+' = '+d},{t:'nth term',c:'un = '+d+'n + c'},{t:'Find c',c:'when n=1: '+d+'×1 + c = '+a+' → c = '+c},{t:'Rule',c:'un = '+d+'n + ('+c+')'},{t:'Find u'+st.findN,c:d+'×'+st.findN+'+'+c+' = '+findVal}])}`:
       `<div class="info-box"><div class="info-label">Not a linear sequence</div><div style="font-size:13px;color:#94a3b8;line-height:1.8">Check if 2nd differences are constant for a quadratic sequence.</div></div>`;
   } else {
-    ruleHTML='<div class="info-box"><div style="font-size:13px;color:#64748b">Enter at least 4 numbers separated by commas</div></div>';
+    ruleHTML=`<div class="info-box" style="text-align:center;padding:20px">
+      <div style="font-size:28px;margin-bottom:8px">🔢</div>
+      <div style="font-size:14px;color:#f59e0b;font-weight:700;margin-bottom:6px">Need at least 2 numbers</div>
+      <div style="font-size:13px;color:#64748b">Enter a sequence like: 3, 7, 11, 15, 19</div>
+    </div>`;
     useHTML='';
   }
 
@@ -1346,7 +1512,7 @@ function renderNth(){
 function renderIntersect(){
   const{m1,c1,m2,c2}=S.intersect;
   let intX=null,intY=null,parallel=false;
-  if(Math.abs(m1-m2)<0.001){parallel=true;}else{intX=r2((c2-c1)/(m1-m2));intY=r2(m1*intX+c1);}
+  if(Math.abs(m1-m2)<0.01){parallel=true;}else{intX=r2((c2-c1)/(m1-m2));intY=r2(m1*intX+c1);}
 
   function linePoints(m,c){
     const pts=[];
@@ -1472,6 +1638,7 @@ function renderBarChart_withArraySI(){
 function renderPieChart(){
   const{labels,values}=S.piechart;
   const total=values.reduce(function(a,b){return a+b;},0);
+  if(total===0) return pageWrap('Pie Charts','🥧','Adjust values to reshape pie slices.','<div class="info-box" style="text-align:center;padding:32px"><div style="font-size:28px">⚠️</div><div style="font-size:14px;color:#f59e0b;margin-top:8px">All values are zero — pie chart cannot be drawn</div></div>','stats');
   const colors=['#818cf8','#34d399','#fbbf24','#f43f5e','#a78bfa','#22d3ee'];
   const cx=180,cy=160,r=130;
   let startAngle=-Math.PI/2;
@@ -1548,7 +1715,8 @@ function renderTimeSeries(){
   const sumY=points.reduce(function(s,v){return s+v;},0);
   const sumXY=points.reduce(function(s,v,i){return s+i*v;},0);
   const sumX2=ptCoords.reduce(function(s,_,i){return s+i*i;},0);
-  const slope=(n*sumXY-sumX*sumY)/(n*sumX2-sumX*sumX);
+  const denom=(n*sumX2-sumX*sumX);
+  const slope=denom===0?0:(n*sumXY-sumX*sumY)/denom;
   const intercept=(sumY-slope*sumX)/n;
   const trend_y1=padT+chartH-(intercept-minV)*scaleY;
   const trend_y2=padT+chartH-((slope*(n-1)+intercept)-minV)*scaleY;
@@ -1600,7 +1768,9 @@ function renderTimeSeries(){
 // ═══════════════════════════════════════════════════
 function renderStemLeaf(){
   const raw=S.stemleaf.data;
-  const nums=raw.split(',').map(function(s){return parseInt(s.trim());}).filter(function(n){return !isNaN(n)&&n>=0&&n<=99;}).sort(function(a,b){return a-b;});
+  const allParsed=raw.split(',').map(function(s){return parseInt(s.trim());}).filter(function(n){return !isNaN(n);});
+  const outOfRange=allParsed.filter(function(n){return n<0||n>99;});
+  const nums=allParsed.filter(function(n){return n>=0&&n<=99;}).sort(function(a,b){return a-b;});
 
   const stemMap={};
   nums.forEach(function(n){
@@ -1629,6 +1799,8 @@ function renderStemLeaf(){
         <div class="card" style="margin-bottom:16px">
           <div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:8px">Enter data (0–99, comma-separated)</div>
           <input class="seq-input" type="text" value="${raw}" oninput="S.stemleaf.data=this.value;rerender();" placeholder="e.g. 12,15,23,34,45">
+          ${outOfRange.length>0?`<div style="font-size:12px;color:#f59e0b;margin-top:6px">⚠ Removed ${outOfRange.length} value(s) outside 0–99: ${outOfRange.join(', ')}</div>`:''}
+          ${nums.length===0?'<div style="font-size:12px;color:#f43f5e;margin-top:6px">⚠ No valid data entered. Use whole numbers 0–99.</div>':''}
         </div>
         <div style="background:#060b14;border-radius:12px;padding:16px;overflow-x:auto">
           <div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:10px;text-transform:uppercase;letter-spacing:.08em">Stem & Leaf (n=${nums.length})</div>
@@ -1791,6 +1963,9 @@ const PAGE_MAP={
   barchart:renderBarChart,piechart:renderPieChart,
   timeseries:renderTimeSeries,stemleaf:renderStemLeaf,freqdiag:renderFreqDiag,
   probability:renderProbability,
+  integers:renderIntegers,
+  fractions:renderFractions,
+  angles:renderAngles,
 };
 
 function navigateCat(key){
@@ -1822,6 +1997,529 @@ function rerender(){
   });
 }
 
+
+// ═══════════════════════════════════════════════════
+// INTEGERS & NEGATIVE NUMBERS
+// ═══════════════════════════════════════════════════
+function renderIntegers(){
+  const{start,change,mode,animStep}=S.integers;
+  const end=mode==='add'?start+change:start-change;
+  const actualChange=mode==='add'?change:-change;
+
+  // Number line SVG
+  const svgW=500,svgH=180,NL_MIN=-20,NL_MAX=20;
+  const padL=30,padR=30,lineY=100;
+  const lineW=svgW-padL-padR;
+  const unitW=lineW/(NL_MAX-NL_MIN);
+
+  function nx(v){return padL+(v-NL_MIN)*unitW;}
+
+  // Ticks and labels
+  let ticks='';
+  for(let i=NL_MIN;i<=NL_MAX;i++){
+    const x=nx(i);
+    const major=(i%5===0);
+    ticks+=`<line x1="${x}" y1="${lineY-(major?10:5)}" x2="${x}" y2="${lineY+(major?10:5)}" stroke="${i===0?'#475569':'#1e293b'}" stroke-width="${major?1.5:1}"/>`;
+    if(major) ticks+=`<text x="${x}" y="${lineY+26}" text-anchor="middle" fill="${i===0?'#64748b':'#334155'}" font-size="11" font-family="Space Grotesk">${i}</text>`;
+  }
+
+  // Animate arrow — how far along are we?
+  const steps=Math.abs(actualChange);
+  const currentPos=steps>0?start+Math.sign(actualChange)*Math.min(animStep,steps):start;
+  const arrowEnd=nx(currentPos);
+  const arrowStart=nx(start);
+  const arrowDir=actualChange>=0?1:-1;
+
+  // Curved arc above/below the line
+  const arcH=40;
+  const ax1=nx(start),ax2=nx(end);
+  const midX=(ax1+ax2)/2;
+  const arcY=lineY-(actualChange>=0?arcH:-arcH/2);
+  const arcPath=`M ${ax1} ${lineY} Q ${midX} ${arcY} ${ax2} ${lineY}`;
+
+  // Start dot, end dot, current pos dot
+  const startDot=`<circle cx="${nx(start)}" cy="${lineY}" r="10" fill="#818cf8" stroke="#fff" stroke-width="2"/>
+    <text x="${nx(start)}" y="${lineY-18}" text-anchor="middle" fill="#818cf8" font-size="12" font-weight="700" font-family="Space Grotesk">${start}</text>`;
+  const endDot=`<circle cx="${nx(end)}" cy="${lineY}" r="10" fill="#34d399" stroke="#fff" stroke-width="2"/>
+    <text x="${nx(end)}" y="${lineY+38}" text-anchor="middle" fill="#34d399" font-size="13" font-weight="700" font-family="Space Grotesk">${end}</text>`;
+  const curDot=animStep>0&&animStep<steps?`<circle cx="${nx(currentPos)}" cy="${lineY}" r="7" fill="#fbbf24" stroke="#fff" stroke-width="2"/>`:'' ;
+
+  const nlSVG=`<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="background:#060b14;border-radius:12px;display:block;max-width:100%">
+    <!-- Main number line -->
+    <line x1="${padL}" y1="${lineY}" x2="${svgW-padR}" y2="${lineY}" stroke="#334155" stroke-width="2"/>
+    <!-- Arrows at ends -->
+    <polygon points="${svgW-padR},${lineY} ${svgW-padR-8},${lineY-4} ${svgW-padR-8},${lineY+4}" fill="#475569"/>
+    ${ticks}
+    <!-- Arc showing movement -->
+    <path d="${arcPath}" fill="none" stroke="${actualChange>=0?'#818cf8':'#f43f5e'}" stroke-width="2.5" stroke-dasharray="${animStep===0?'6,4':'none'}" opacity="${animStep===0?'0.5':'1'}"/>
+    <!-- Arrowhead at end of arc -->
+    <polygon points="${nx(end)},${lineY} ${nx(end)-(arrowDir*6)},${lineY-5} ${nx(end)-(arrowDir*6)},${lineY+5}" fill="${actualChange>=0?'#818cf8':'#f43f5e'}"/>
+    ${startDot}${endDot}${curDot}
+    <!-- Zero marker -->
+    <line x1="${nx(0)}" y1="${lineY-14}" x2="${nx(0)}" y2="${lineY+14}" stroke="#475569" stroke-width="2"/>
+  </svg>`;
+
+  // Direction words
+  const dirWord=actualChange>=0?'↗ Move RIGHT (positive)':'↙ Move LEFT (negative)';
+  const dirColor=actualChange>=0?'#34d399':'#f43f5e';
+
+  // Visual counter boxes (one per step)
+  const stepBoxes=Array.from({length:Math.abs(actualChange)},function(_,i){
+    const pos=start+Math.sign(actualChange)*(i+1);
+    const done=animStep>i;
+    return `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:3px;margin:3px">
+      <div style="width:36px;height:36px;border-radius:8px;background:${done?(actualChange>=0?'rgba(99,102,241,.4)':'rgba(244,63,94,.4)'):'rgba(30,41,59,.6)'};border:1px solid ${done?(actualChange>=0?'#818cf8':'#f43f5e'):'#1e293b'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:${done?'#e2e8f0':'#334155'};font-family:'JetBrains Mono',monospace;transition:all .3s">${Math.sign(actualChange)>=0?'+':'-'}1</div>
+      <div style="font-size:10px;color:${done?'#64748b':'#1e293b'};font-family:'JetBrains Mono',monospace">${pos}</div>
+    </div>`;
+  }).join('');
+
+  return pageWrap('Integers & Negative Numbers','➖','See addition and subtraction on a number line. Watch it step by step.',`
+    <div class="two-col">
+      <div>
+        <div style="margin-bottom:12px">${nlSVG}</div>
+        <div style="background:rgba(15,23,42,.6);border:1px solid rgba(99,102,241,.1);border-radius:12px;padding:14px;margin-bottom:12px">
+          <div style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Step-by-step counter</div>
+          <div style="display:flex;flex-wrap:wrap;gap:2px;min-height:50px">${stepBoxes||'<div style="color:#334155;font-size:13px">Adjust the sliders to see steps</div>'}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-action" onclick="
+            S.integers.animStep=0;
+            var iv=setInterval(function(){
+              if(S.integers.animStep>=Math.abs(S.integers.mode==='add'?S.integers.change:-S.integers.change)){clearInterval(iv);return;}
+              S.integers.animStep++;rerender();
+            },400);
+          ">▶ Animate Steps</button>
+          <button class="btn-action" onclick="S.integers.animStep=Math.abs(S.integers.change);rerender()">⏭ Show Answer</button>
+          <button class="btn-action" onclick="S.integers.animStep=0;rerender()">↺ Reset</button>
+        </div>
+      </div>
+      <div class="ctrl-col">
+        <div class="card">
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button class="btn btn-tab${mode==='add'?' active':''}" onclick="S.integers.mode='add';S.integers.animStep=0;rerender()">➕ Addition</button>
+            <button class="btn btn-tab${mode==='sub'?' active':''}" onclick="S.integers.mode='sub';S.integers.animStep=0;rerender()">➖ Subtraction</button>
+          </div>
+          ${SI('Start number','#818cf8',start,-15,15,1,'integers','start')}
+          ${SI((mode==='add'?'Add':'Subtract')+' (change)','#f59e0b',change,0,15,1,'integers','change')}
+        </div>
+        ${fbox('Calculation',start+(mode==='add'?' + ':' − ')+change+' =',''+end,actualChange>=0?'emerald':'rose')}
+        <div style="background:${actualChange>=0?'rgba(16,185,129,.1)':'rgba(244,63,94,.1)'};border:1px solid ${actualChange>=0?'rgba(16,185,129,.3)':'rgba(244,63,94,.3)'};border-radius:12px;padding:14px">
+          <div style="font-size:13px;font-weight:700;color:${dirColor};margin-bottom:8px">${dirWord}</div>
+          <div style="font-size:12px;color:#94a3b8;line-height:1.8">
+            ${actualChange>=0?
+              'Positive numbers → move <strong style="color:#34d399">right</strong> on number line<br>Starting at '+start+', move '+Math.abs(actualChange)+' steps right → land on '+end:
+              'Subtracting → move <strong style="color:#f43f5e">left</strong> on number line<br>Starting at '+start+', move '+Math.abs(actualChange)+' steps left → land on '+end}
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="info-label">Key Rules</div>
+          <div style="font-size:12px;color:#94a3b8;line-height:1.9">
+            + positive → move <strong style="color:#34d399">right ➡</strong><br>
+            − negative → move <strong style="color:#f43f5e">left ⬅</strong><br>
+            + (−n) = − n &nbsp;(adding neg = subtract)<br>
+            − (−n) = + n &nbsp;(subtracting neg = add)<br>
+            |n| = absolute value = distance from 0
+          </div>
+        </div>
+        ${steps([
+          {t:'Start position',c:'Place marker at '+start+' on number line'},
+          {t:'Direction',c:actualChange>=0?'Positive change → move right':'Negative change → move left'},
+          {t:'Count steps',c:'Move '+Math.abs(actualChange)+' steps '+( actualChange>=0?'right':'left')},
+          {t:'Answer',c:'Land on '+end},
+        ])}
+        ${quizWidget('integers')}
+      </div>
+    </div>`,'algebra');
+}
+
+// ═══════════════════════════════════════════════════
+// FRACTIONS VISUAL MODEL
+// ═══════════════════════════════════════════════════
+function renderFractions(){
+  const st=S.fractions;
+  const{modeTab,num1,den1,num2,den2,eqNum,eqDen,eqMult,cols,rows}=st;
+
+  // ── Fraction bar SVG helper ──
+  function fracBar(num,den,color,w,h,label){
+    if(den<=0)return '';
+    const cellW=w/den;
+    let cells='';
+    for(let i=0;i<den;i++){
+      const filled=i<num;
+      cells+=`<rect x="${i*cellW+1}" y="1" width="${cellW-2}" height="${h-2}" fill="${filled?color:'rgba(30,41,59,.6)'}" stroke="#1e293b" stroke-width="1" rx="3"/>`;
+      if(den<=20) cells+=`<text x="${i*cellW+cellW/2}" y="${h/2+4}" text-anchor="middle" fill="${filled?'#fff':'#334155'}" font-size="${Math.max(8,Math.min(13,cellW*0.5))}" font-weight="700" font-family="JetBrains Mono">${i<num?'▪':''}</text>`;
+    }
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;margin-bottom:6px">
+      <rect width="${w}" height="${h}" fill="rgba(15,23,42,.6)" rx="6"/>
+      ${cells}
+      ${label?`<text x="${w+8}" y="${h/2+4}" fill="#94a3b8" font-size="13" font-weight="600" font-family="Space Grotesk">${label}</text>`:''}
+    </svg>`;
+  }
+
+  // ── Grid model for multiplication ──
+  function fracGrid(n1,d1,n2,d2,cols2,rows2){
+    const cW=Math.min(300/cols2,40),rH=Math.min(200/rows2,40);
+    const gW=cols2*cW,gH=rows2*rH;
+    let cells='';
+    for(let r=0;r<rows2;r++){
+      for(let c=0;c<cols2;c++){
+        const inFrac1=c<n1;  // columns represent first fraction
+        const inFrac2=r<n2;  // rows represent second fraction
+        const fill=inFrac1&&inFrac2?'rgba(99,102,241,.8)':inFrac1?'rgba(99,102,241,.2)':inFrac2?'rgba(16,185,129,.2)':'rgba(15,23,42,.4)';
+        cells+=`<rect x="${c*cW}" y="${r*rH}" width="${cW}" height="${rH}" fill="${fill}" stroke="#1e293b" stroke-width="0.5" rx="2"/>`;
+      }
+    }
+    // Shading lines
+    const resNum=n1*n2,resDen=d1*d2;
+    return `<div>
+      <svg width="${gW}" height="${gH}" viewBox="0 0 ${gW} ${gH}" style="display:block;border-radius:8px;margin-bottom:8px">${cells}</svg>
+      <div style="font-size:12px;color:#94a3b8">
+        <span style="color:#818cf8">█</span> = ${n1}/${d1} &nbsp;
+        <span style="color:#34d399">█</span> = ${n2}/${d2} &nbsp;
+        <span style="color:#6366f1">█</span> = overlap = ${resNum}/${resDen}${resNum!==0&&gcd(resNum,resDen)>1?' = '+(resNum/gcd(resNum,resDen))+'/'+(resDen/gcd(resNum,resDen)):''}
+      </div>
+    </div>`;
+  }
+
+  let mainContent='';
+  let rightPanel='';
+
+  if(modeTab==='equivalent'){
+    const eqNum2=eqNum*eqMult, eqDen2=eqDen*eqMult;
+    const pct=r2(eqNum/eqDen*100);
+    mainContent=`
+      <div class="info-box" style="margin-bottom:14px">
+        <div class="info-label">Original Fraction</div>
+        <div style="margin:10px 0">${fracBar(eqNum,eqDen,'rgba(99,102,241,.8)',320,44,eqNum+'/'+eqDen+' = '+pct+'%')}</div>
+        <div class="info-label" style="margin-top:14px">Equivalent (×${eqMult})</div>
+        <div style="margin:10px 0">${fracBar(eqNum2,eqDen2,'rgba(99,102,241,.5)',320,44,eqNum2+'/'+eqDen2+' = '+pct+'%')}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:8px">Both bars are the same length — same value, different parts</div>
+      </div>`;
+    rightPanel=`
+      <div class="card">
+        ${SI('Numerator','#818cf8',eqNum,1,10,1,'fractions','eqNum')}
+        ${SI('Denominator','#f59e0b',eqDen,1,12,1,'fractions','eqDen')}
+        ${SI('Multiply by (×)','#34d399',eqMult,2,8,1,'fractions','eqMult')}
+      </div>
+      ${fbox('Original',''+eqNum+'/'+eqDen,''+r2(eqNum/eqDen),'indigo')}
+      ${fbox('Equivalent','×'+eqMult+' top and bottom',eqNum2+'/'+eqDen2,'emerald')}
+      ${fbox('As decimal','÷ numerator by denominator',''+r2(eqNum/eqDen),'amber')}
+      ${fbox('As percentage','decimal × 100',pct+'%','violet')}
+      ${steps([
+        {t:'Original fraction',c:eqNum+'/'+eqDen},
+        {t:'Multiply both',c:'numerator: '+eqNum+'×'+eqMult+'='+eqNum2+', denominator: '+eqDen+'×'+eqMult+'='+eqDen2},
+        {t:'Equivalent fraction',c:eqNum2+'/'+eqDen2+' (same value as '+eqNum+'/'+eqDen+')'},
+        {t:'Decimal',c:eqNum+' ÷ '+eqDen+' = '+r2(eqNum/eqDen)},
+      ])}`;
+
+  } else if(modeTab==='compare'){
+    // Compare two fractions side by side
+    const lcd=den1*den2/gcd(den1,den2);
+    const eq1=num1*(lcd/den1), eq2=num2*(lcd/den2);
+    const rel=eq1>eq2?'>':eq1<eq2?'<':'=';
+    const dec1=r2(num1/den1), dec2=r2(num2/den2);
+    mainContent=`
+      <div class="info-box" style="margin-bottom:14px">
+        <div class="info-label">Fraction A</div>
+        <div style="margin:10px 0">${fracBar(num1,den1,'rgba(99,102,241,.8)',320,44,num1+'/'+den1+' = '+dec1)}</div>
+        <div class="info-label" style="margin-top:12px">Fraction B</div>
+        <div style="margin:10px 0">${fracBar(num2,den2,'rgba(16,185,129,.8)',320,44,num2+'/'+den2+' = '+dec2)}</div>
+        <div style="margin-top:12px;font-size:16px;font-weight:700;color:#fcd34d;text-align:center">${num1}/${den1} ${rel} ${num2}/${den2}</div>
+      </div>`;
+    rightPanel=`
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;color:#818cf8;margin-bottom:8px">Fraction A (purple)</div>
+        ${SI('Numerator A','#818cf8',num1,1,12,1,'fractions','num1')}
+        ${SI('Denominator A','#818cf8',den1,1,12,1,'fractions','den1')}
+        <div style="font-size:12px;font-weight:700;color:#34d399;margin-top:10px;margin-bottom:8px">Fraction B (green)</div>
+        ${SI('Numerator B','#34d399',num2,1,12,1,'fractions','num2')}
+        ${SI('Denominator B','#34d399',den2,1,12,1,'fractions','den2')}
+      </div>
+      ${fbox('LCD (common denom)','LCM of '+den1+' and '+den2,''+lcd,'amber')}
+      ${fbox('Comparison',num1+'/'+den1+' vs '+num2+'/'+den2,num1+'/'+den1+' '+rel+' '+num2+'/'+den2,'indigo')}
+      ${steps([
+        {t:'Find LCD',c:'LCM('+den1+','+den2+') = '+lcd},
+        {t:'Convert A',c:num1+'/'+den1+' = '+eq1+'/'+lcd},
+        {t:'Convert B',c:num2+'/'+den2+' = '+eq2+'/'+lcd},
+        {t:'Compare',c:eq1+' '+rel+' '+eq2+' so '+num1+'/'+den1+' '+rel+' '+num2+'/'+den2},
+      ])}`;
+
+  } else if(modeTab==='multiply'){
+    const resNum=num1*num2, resDen=den1*den2;
+    const g=gcd(resNum,resDen);
+    const simpNum=resNum/g, simpDen=resDen/g;
+    mainContent=`
+      <div class="info-box" style="margin-bottom:14px">
+        <div class="info-label">Grid Model — ${num1}/${den1} × ${num2}/${den2}</div>
+        <div style="margin:12px 0">${fracGrid(num1,den1,num2,den2,den1,den2)}</div>
+        <div style="font-size:12px;color:#64748b">Columns = ${den1} parts, Rows = ${den2} parts. Purple overlap = answer.</div>
+      </div>`;
+    rightPanel=`
+      <div class="card">
+        <div style="font-size:12px;font-weight:700;color:#818cf8;margin-bottom:8px">First fraction</div>
+        ${SI('Numerator','#818cf8',num1,1,8,1,'fractions','num1')}
+        ${SI('Denominator','#818cf8',den1,1,8,1,'fractions','den1')}
+        <div style="font-size:12px;font-weight:700;color:#34d399;margin-top:10px;margin-bottom:8px">Second fraction</div>
+        ${SI('Numerator','#34d399',num2,1,8,1,'fractions','num2')}
+        ${SI('Denominator','#34d399',den2,1,8,1,'fractions','den2')}
+      </div>
+      ${fbox('Multiply','Multiply tops, multiply bottoms',num1+'×'+num2+' / '+den1+'×'+den2,'indigo')}
+      ${fbox('Result',''+resNum+'/'+resDen,g>1?'= '+simpNum+'/'+simpDen:'Already simplified','emerald')}
+      ${g>1?fbox('Simplified','÷ both by HCF '+g,simpNum+'/'+simpDen,'amber'):''}
+      ${steps([
+        {t:'Multiply numerators',c:num1+' × '+num2+' = '+resNum},
+        {t:'Multiply denominators',c:den1+' × '+den2+' = '+resDen},
+        {t:'Result',c:resNum+'/'+resDen},
+        {t:'Simplify (HCF='+g+')',c:g>1?resNum+'/'+g+' and '+resDen+'/'+g+' → '+simpNum+'/'+simpDen:'Already in simplest form'},
+      ])}`;
+  }
+
+  return pageWrap('Fractions Visual Model','½','See fractions as bars and grids. Compare, find equivalents, multiply.',`
+    ${tabs([['equivalent','Equivalent'],['compare','Compare'],['multiply','Multiply']],modeTab,"S.fractions.modeTab=__V__;rerender()")}
+    <div class="two-col">
+      <div>${mainContent}</div>
+      <div class="ctrl-col">${rightPanel}${quizWidget('fractions')}</div>
+    </div>`,'algebra');
+}
+
+// ═══════════════════════════════════════════════════
+// ANGLE REASONING BUILDER
+// ═══════════════════════════════════════════════════
+function renderAngles(){
+  const{mode,angleA,showReasons,quizMode,quizAnswer,quizResult,quizTarget}=S.angles;
+
+  // ── Helper: draw arc ──
+  function arc(cx,cy,r,startDeg,endDeg,color,dashed){
+    const s=startDeg*Math.PI/180, e=endDeg*Math.PI/180;
+    const x1=cx+r*Math.cos(s),y1=cy+r*Math.sin(s);
+    const x2=cx+r*Math.cos(e),y2=cy+r*Math.sin(e);
+    const large=Math.abs(endDeg-startDeg)>180?1:0;
+    return `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}" fill="none" stroke="${color}" stroke-width="1.5" ${dashed?'stroke-dasharray="4,3"':''}/>`;
+  }
+  function label(x,y,text,color,size){
+    return `<text x="${x}" y="${y}" text-anchor="middle" fill="${color||'#e2e8f0'}" font-size="${size||13}" font-weight="700" font-family="Space Grotesk">${text}</text>`;
+  }
+  function angleLabel(cx,cy,r,startDeg,endDeg,text,color){
+    const midDeg=(startDeg+endDeg)/2;
+    const mx=cx+r*Math.cos(midDeg*Math.PI/180);
+    const my=cy+r*Math.sin(midDeg*Math.PI/180);
+    return arc(cx,cy,r,startDeg,endDeg,color||'#fbbf24')+label(mx,my,text,color||'#fbbf24',11);
+  }
+
+  const W2=420,H2=320,svgStyle=`background:#060b14;border-radius:12px;display:block;max-width:100%`;
+
+  let diagram='', facts=[], stepsArr=[];
+
+  // ── MODE: Angles on a straight line ──
+  if(mode==='straight'){
+    const b=180-angleA;
+    const cx=W2/2, cy=H2*0.6;
+    diagram=`<svg width="${W2}" height="${H2}" viewBox="0 0 ${W2} ${H2}" style="${svgStyle}">
+      <line x1="40" y1="${cy}" x2="${W2-40}" y2="${cy}" stroke="#334155" stroke-width="2.5"/>
+      <line x1="${cx}" y1="${cy}" x2="${cx+130*Math.cos((180-angleA)*Math.PI/180)}" y2="${cy-130*Math.sin((180-angleA)*Math.PI/180)}" stroke="#818cf8" stroke-width="2.5"/>
+      ${angleLabel(cx,cy,55,180,180-angleA,'a = '+angleA+'°','#818cf8')}
+      ${angleLabel(cx,cy,55,180-angleA,0,'b = '+b+'°','#34d399')}
+      ${label(cx,cy+30,'Angles on a straight line = 180°','#475569',11)}
+    </svg>`;
+    facts=[{label:'a',val:angleA,color:'#818cf8',reason:'Given'},{label:'b',val:b,color:'#34d399',reason:'180° − '+angleA+'° (straight line)'}];
+    stepsArr=[{t:'Rule',c:'Angles on a straight line add up to 180°'},{t:'Given',c:'a = '+angleA+'°'},{t:'Find b',c:'b = 180° − '+angleA+'° = '+b+'°'}];
+  }
+
+  // ── MODE: Vertically opposite ──
+  else if(mode==='vertop'){
+    const cx=W2/2,cy=H2/2;
+    const a2=angleA, b2=180-angleA;
+    diagram=`<svg width="${W2}" height="${H2}" viewBox="0 0 ${W2} ${H2}" style="${svgStyle}">
+      <line x1="40" y1="${cy+60}" x2="${W2-40}" y2="${cy-60}" stroke="#334155" stroke-width="2"/>
+      <line x1="40" y1="${cy-60}" x2="${W2-40}" y2="${cy+60}" stroke="#334155" stroke-width="2"/>
+      ${angleLabel(cx,cy,50,0,angleA,'a='+a2+'°','#818cf8')}
+      ${angleLabel(cx,cy,50,180,180+angleA,'a='+a2+'°','#818cf8')}
+      ${angleLabel(cx,cy,50,angleA,180,'b='+b2+'°','#34d399')}
+      ${angleLabel(cx,cy,50,180+angleA,360,'b='+b2+'°','#34d399')}
+      ${label(cx,cy-H2*0.35,'Vertically opposite angles are equal','#475569',11)}
+    </svg>`;
+    facts=[{label:'a',val:a2,color:'#818cf8',reason:'Given (vertically opposite = equal)'},{label:'b',val:b2,color:'#34d399',reason:'180° − '+a2+'° (straight line)'}];
+    stepsArr=[{t:'Rule',c:'Vertically opposite angles are equal'},{t:'a = a',c:'Both purple angles = '+a2+'°'},{t:'b = 180−a',c:b2+'° (angles on straight line)'}];
+  }
+
+  // ── MODE: Parallel lines (main one) ──
+  else if(mode==='parallel'){
+    const cx=W2/2, cy=H2/2;
+    // Two parallel lines + transversal
+    const lineY1=cy-70, lineY2=cy+70;
+    const transAngle=angleA; // angle with horizontal
+    const rad=transAngle*Math.PI/180;
+    const tx1=cx-160*Math.cos(rad), ty1=lineY1+160*Math.sin(rad); // wrong, let me fix
+    // Transversal hits line1 at (ix1,lineY1) and line2 at (ix2,lineY2)
+    const slope=Math.tan((90-transAngle)*Math.PI/180);
+    const ix1=cx-40, ix2=cx+40*(lineY2-lineY1)*0/100+40;
+
+    // Intersection points
+    const P1={x:cx-30,y:lineY1}, P2={x:cx+30,y:lineY2};
+    // Angle at P1
+    const angRad=transAngle*Math.PI/180;
+    // alternate angles = equal, co-interior = 180-a, corresponding = equal
+    const altAngle=transAngle;
+    const coInt=180-transAngle;
+    const corrAngle=transAngle;
+
+    diagram=`<svg width="${W2}" height="${H2}" viewBox="0 0 ${W2} ${H2}" style="${svgStyle}">
+      <!-- Parallel lines -->
+      <line x1="20" y1="${lineY1}" x2="${W2-20}" y2="${lineY1}" stroke="#334155" stroke-width="2"/>
+      <line x1="20" y1="${lineY2}" x2="${W2-20}" y2="${lineY2}" stroke="#334155" stroke-width="2"/>
+      <!-- Parallel markers -->
+      <line x1="80" y1="${lineY1-6}" x2="90" y2="${lineY1+6}" stroke="#475569" stroke-width="2"/>
+      <line x1="85" y1="${lineY1-6}" x2="95" y2="${lineY1+6}" stroke="#475569" stroke-width="2"/>
+      <line x1="80" y1="${lineY2-6}" x2="90" y2="${lineY2+6}" stroke="#475569" stroke-width="2"/>
+      <line x1="85" y1="${lineY2-6}" x2="95" y2="${lineY2+6}" stroke="#475569" stroke-width="2"/>
+      <!-- Transversal -->
+      <line x1="${P1.x-100*Math.cos(angRad)}" y1="${P1.y+100*Math.sin(angRad)}" x2="${P2.x+120*Math.cos(angRad)}" y2="${P2.y-120*Math.sin(angRad)}" stroke="#818cf8" stroke-width="2"/>
+      <!-- Angle a at top intersection -->
+      ${arc(P1.x,P1.y,38,-angRad*180/Math.PI*0+180,(180-transAngle),'#818cf8')}
+      ${label(P1.x-26,P1.y-16,'a='+transAngle+'°','#818cf8',12)}
+      <!-- Alternate angle (Z angle) at bottom -->
+      ${arc(P2.x,P2.y,38,0,transAngle,'#34d399')}
+      ${label(P2.x+30,P2.y+16,'alt='+altAngle+'°','#34d399',12)}
+      <!-- Co-interior at bottom -->
+      ${arc(P2.x,P2.y,52,transAngle,180,'#f59e0b',true)}
+      ${label(P2.x-20,P2.y+30,'co-int='+coInt+'°','#f59e0b',10)}
+      <!-- Labels -->
+      ${label(W2-30,lineY1,'L1','#475569',11)}
+      ${label(W2-30,lineY2,'L2','#475569',11)}
+    </svg>`;
+    facts=[
+      {label:'a (given)',val:transAngle,color:'#818cf8',reason:'Given angle'},
+      {label:'Alternate (Z-angle)',val:altAngle,color:'#34d399',reason:'Equal to a (alternate angles, parallel lines)'},
+      {label:'Co-interior (C-angle)',val:coInt,color:'#f59e0b',reason:'180° − a (co-interior angles sum to 180°)'},
+      {label:'Corresponding (F-angle)',val:corrAngle,color:'#a78bfa',reason:'Equal to a (corresponding angles, parallel lines)'},
+    ];
+    stepsArr=[
+      {t:'Identify parallel lines',c:'L1 ∥ L2 (shown by tick marks)'},
+      {t:'Alternate angles (Z)',c:'On opposite sides of transversal, between parallels. Equal: '+altAngle+'°'},
+      {t:'Co-interior angles (C)',c:'Same side of transversal, between parallels. Sum = 180°: '+coInt+'°'},
+      {t:'Corresponding angles (F)',c:'Same position at each intersection. Equal: '+corrAngle+'°'},
+    ];
+  }
+
+  // ── MODE: Triangle angles ──
+  else if(mode==='triangle'){
+    const b3=rand(20,angleA-10)||20, c3=180-angleA-b3;
+    const b3fixed=Math.max(10,Math.min(angleA-10,60));
+    const c3fixed=180-angleA-b3fixed;
+    const W3=380,H3=280;
+    // Triangle points
+    const pA={x:60,y:H3-50}, pB={x:W3-60,y:H3-50}, pC={x:W3*0.4,y:50};
+    diagram=`<svg width="${W3}" height="${H3}" viewBox="0 0 ${W3} ${H3}" style="${svgStyle}">
+      <polygon points="${pA.x},${pA.y} ${pB.x},${pB.y} ${pC.x},${pC.y}" fill="rgba(99,102,241,.1)" stroke="#818cf8" stroke-width="2"/>
+      ${label(pA.x-20,pA.y+10,'a='+angleA+'°','#818cf8',13)}
+      ${label(pB.x+14,pB.y+10,'b='+b3fixed+'°','#34d399',13)}
+      ${label(pC.x,pC.y-14,'c='+c3fixed+'°','#f59e0b',13)}
+      ${label(W3/2,H3-10,'a + b + c = '+angleA+' + '+b3fixed+' + '+c3fixed+' = 180°','#475569',10)}
+    </svg>`;
+    facts=[
+      {label:'a',val:angleA,color:'#818cf8',reason:'Given'},
+      {label:'b',val:b3fixed,color:'#34d399',reason:'Given'},
+      {label:'c',val:c3fixed,color:'#f59e0b',reason:'180° − '+angleA+'° − '+b3fixed+'° (angles in triangle)'},
+    ];
+    stepsArr=[{t:'Rule',c:'Angles in a triangle sum to 180°'},{t:'Given',c:'a='+angleA+'°, b='+b3fixed+'°'},{t:'Find c',c:'c = 180−'+angleA+'−'+b3fixed+' = '+c3fixed+'°'}];
+  }
+
+  // ── Mode: Angles around a point ──
+  else {
+    const b4=360-angleA;
+    const cx2=W2/2,cy2=H2/2;
+    diagram=`<svg width="${W2}" height="${H2}" viewBox="0 0 ${W2} ${H2}" style="${svgStyle}">
+      <circle cx="${cx2}" cy="${cy2}" r="110" fill="rgba(15,23,42,.4)" stroke="#1e293b" stroke-width="1"/>
+      <line x1="${cx2}" y1="${cy2}" x2="${cx2+120}" y2="${cy2}" stroke="#334155" stroke-width="1.5"/>
+      <line x1="${cx2}" y1="${cy2}" x2="${cx2+120*Math.cos(angleA*Math.PI/180)}" y2="${cy2-120*Math.sin(angleA*Math.PI/180)}" stroke="#818cf8" stroke-width="2.5"/>
+      ${arc(cx2,cy2,70,0,-angleA,'#818cf8')}
+      ${arc(cx2,cy2,70,-angleA,-360,'#34d399')}
+      ${label(cx2+55,cy2-30,'a='+angleA+'°','#818cf8',12)}
+      ${label(cx2-55,cy2+20,'b='+b4+'°','#34d399',12)}
+      ${label(cx2,cy2+H2*0.38,'Angles around a point = 360°','#475569',11)}
+    </svg>`;
+    facts=[{label:'a',val:angleA,color:'#818cf8',reason:'Given'},{label:'b',val:b4,color:'#34d399',reason:'360° − '+angleA+'° (angles around a point)'}];
+    stepsArr=[{t:'Rule',c:'Angles around a point sum to 360°'},{t:'Given',c:'a = '+angleA+'°'},{t:'Find b',c:'b = 360° − '+angleA+'° = '+b4+'°'}];
+  }
+
+  // Quiz mode overlay
+  let quizHTML='';
+  if(quizMode){
+    const target=facts.find(function(f){return f.label.startsWith(quizTarget);});
+    const correctAns=target?String(target.val):'?';
+    quizHTML=`<div class="quiz-box" style="margin-top:14px">
+      <div style="font-size:13px;font-weight:700;color:#a5b4fc;margin-bottom:8px">🎯 Find angle <span style="color:${target?target.color:'#fbbf24'}">${quizTarget}</span> — what is it?</div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <input class="quiz-input" type="text" id="ang-quiz" value="${quizAnswer}" placeholder="e.g. 65" oninput="S.angles.quizAnswer=this.value">
+        <button class="btn-action" onclick="
+          var ans=S.angles.quizAnswer.trim().replace('°','');
+          var correct='${correctAns}';
+          S.angles.quizResult=(ans===correct);
+          if(S.quiz.total!==undefined){S.quiz.total++;if(S.angles.quizResult)S.quiz.score++;}
+          rerender();
+        ">Check</button>
+        <button class="btn-action" onclick="
+          var targets=S.angles.mode==='parallel'?['a','Alternate (Z-angle)','Co-interior (C-angle)','Corresponding (F-angle)']:['a','b','c'];
+          S.angles.quizTarget=targets[Math.floor(Math.random()*targets.length)];
+          S.angles.quizAnswer='';S.angles.quizResult=null;rerender();
+        ">New angle →</button>
+      </div>
+      ${quizResult===true?'<div style="color:#34d399;font-weight:700;margin-top:8px">✅ Correct! '+target.reason+'</div>':
+        quizResult===false?'<div style="color:#f43f5e;font-weight:700;margin-top:8px">❌ Answer is '+correctAns+'°. '+( target?target.reason:'')+'</div>':''}
+    </div>`;
+  }
+
+  const factCards=facts.map(function(f){
+    return `<div style="background:rgba(15,23,42,.6);border:1px solid ${f.color}44;border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:${f.color};margin-bottom:3px">Angle ${f.label}</div>
+        ${showReasons?`<div style="font-size:11px;color:#64748b">${f.reason}</div>`:''}
+      </div>
+      <div style="font-size:22px;font-weight:700;color:${f.color};font-family:'JetBrains Mono',monospace">${f.val}°</div>
+    </div>`;
+  }).join('');
+
+  const modeList=[['straight','Straight Line'],['vertop','Vertically Opp.'],['parallel','Parallel Lines'],['triangle','Triangle'],['point','Around Point']];
+
+  return pageWrap('Angle Reasoning Builder','📐','See angle rules visually. Toggle reasons. Quiz yourself.',`
+    ${tabs(modeList,mode,"S.angles.mode=__V__;rerender()")}
+    <div class="two-col">
+      <div>
+        <div style="margin-bottom:12px">${diagram}</div>
+        <div style="margin-bottom:12px">${SI('Angle a (°)','#818cf8',angleA,10,170,1,'angles','angleA')}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-tab${showReasons?' active':''}" onclick="S.angles.showReasons=!S.angles.showReasons;rerender()">
+            ${showReasons?'🧠 Hide Reasons':'🧠 Show Reasons'}
+          </button>
+          <button class="btn btn-tab${quizMode?' active':''}" onclick="S.angles.quizMode=!S.angles.quizMode;S.angles.quizResult=null;rerender()">
+            🎯 ${quizMode?'Exit Quiz':'Quiz Mode'}
+          </button>
+        </div>
+        ${quizHTML}
+      </div>
+      <div class="ctrl-col">
+        <div class="info-box" style="margin-bottom:14px">
+          <div class="info-label">Angles Found</div>
+          ${factCards}
+        </div>
+        ${steps(stepsArr)}
+        <div class="info-box">
+          <div class="info-label">All Angle Rules</div>
+          <div style="font-size:12px;color:#94a3b8;line-height:2">
+            📏 Straight line → 180°<br>
+            🔄 Around a point → 360°<br>
+            △ Triangle → 180°<br>
+            ↕ Vertically opposite → equal<br>
+            ∥ Alternate (Z) → equal<br>
+            ∥ Co-interior (C) → 180°<br>
+            ∥ Corresponding (F) → equal
+          </div>
+        </div>
+        ${quizWidget('angles')}
+      </div>
+    </div>`,'geometry');
+}
+
 window.navigate=navigate;
 window.navigateCat=navigateCat;
 window.navigatePage=navigatePage;
@@ -1831,5 +2529,83 @@ window.startQuiz=startQuiz;
 window.checkQuiz=checkQuiz;
 rerender();
 </script>
+
+  <!-- ── Offline status banner ── -->
+  <div id="offline-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#1e293b;border-top:1px solid rgba(245,158,11,.4);padding:10px 20px;text-align:center;font-size:13px;color:#fcd34d;font-family:Space Grotesk,sans-serif;z-index:9999">
+    📶 You are offline — the tool will still work fully from cache
+  </div>
+
+  <!-- ── Update available banner ── -->
+  <div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:rgba(99,102,241,.95);padding:12px 20px;text-align:center;font-size:13px;color:#fff;font-family:Space Grotesk,sans-serif;z-index:9999;display:flex;align-items:center;justify-content:center;gap:12px">
+    <span>🔄 New version available!</span>
+    <button onclick="updateApp()" style="background:#fff;color:#4f46e5;border:none;border-radius:6px;padding:4px 14px;font-weight:700;cursor:pointer;font-size:12px">Update Now</button>
+    <button onclick="document.getElementById('update-banner').style.display='none'" style="background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Later</button>
+  </div>
+
+  <script>
+  // ── Service Worker Registration ──
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(function(reg){
+          console.log('[App] SW registered, scope:', reg.scope);
+
+          // Check for updates
+          reg.addEventListener('updatefound', function(){
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', function(){
+              if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+                // New version waiting — show banner
+                document.getElementById('update-banner').style.display='flex';
+                window._newWorker = newWorker;
+              }
+            });
+          });
+        })
+        .catch(function(err){
+          console.log('[App] SW registration failed:', err);
+        });
+
+      // Listen for controller change (after update)
+      navigator.serviceWorker.addEventListener('controllerchange', function(){
+        window.location.reload();
+      });
+    });
+  }
+
+  // ── Update app when user clicks "Update Now" ──
+  function updateApp(){
+    if(window._newWorker){
+      window._newWorker.postMessage({type:'SKIP_WAITING'});
+    }
+    document.getElementById('update-banner').style.display='none';
+  }
+
+  // ── Offline / Online detection ──
+  function updateOnlineStatus(){
+    const banner = document.getElementById('offline-banner');
+    if(banner){
+      banner.style.display = navigator.onLine ? 'none' : 'block';
+    }
+  }
+  window.addEventListener('online',  updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus(); // Check on load
+
+  // ── iOS "Add to Home Screen" hint (shows once) ──
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  const hintShown = localStorage.getItem('pwa-hint-shown');
+  if(isIOS && !isStandalone && !hintShown){
+    setTimeout(function(){
+      const hint = document.createElement('div');
+      hint.id = 'ios-hint';
+      hint.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid rgba(99,102,241,.4);border-radius:14px;padding:14px 18px;font-size:13px;color:#e2e8f0;font-family:Space Grotesk,sans-serif;z-index:9999;max-width:300px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+      hint.innerHTML = '<div style="font-size:18px;margin-bottom:6px">📱</div><strong style="color:#a5b4fc">Install as App</strong><br><span style="color:#64748b;font-size:12px">Tap <strong style="color:#e2e8f0">Share ↑</strong> then <strong style="color:#e2e8f0">"Add to Home Screen"</strong> to use offline</span><br><button onclick="document.getElementById('ios-hint').remove();localStorage.setItem('pwa-hint-shown','1')" style="margin-top:10px;background:rgba(99,102,241,.3);border:1px solid rgba(99,102,241,.5);color:#a5b4fc;border-radius:8px;padding:5px 16px;cursor:pointer;font-size:12px">Got it</button>';
+      document.body.appendChild(hint);
+      localStorage.setItem('pwa-hint-shown', '1');
+    }, 3000);
+  }
+  </script>
 </body>
 </html>
