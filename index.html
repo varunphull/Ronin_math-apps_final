@@ -2536,15 +2536,15 @@ rerender();
   </div>
 
   <!-- ── Update available banner ── -->
-  <div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:rgba(99,102,241,.95);padding:12px 20px;text-align:center;font-size:13px;color:#fff;font-family:Space Grotesk,sans-serif;z-index:9999;display:flex;align-items:center;justify-content:center;gap:12px">
+  <div id="update-banner" style="display:none;position:fixed;top:0;left:0;right:0;background:rgba(99,102,241,.95);padding:12px 20px;text-align:center;font-size:13px;color:#fff;font-family:Space Grotesk,sans-serif;z-index:9999;align-items:center;justify-content:center;gap:12px">
     <span>🔄 New version available!</span>
     <button onclick="updateApp()" style="background:#fff;color:#4f46e5;border:none;border-radius:6px;padding:4px 14px;font-weight:700;cursor:pointer;font-size:12px">Update Now</button>
     <button onclick="document.getElementById('update-banner').style.display='none'" style="background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px">Later</button>
   </div>
 
   <script>
-  // ── Service Worker Registration ──
-  if('serviceWorker' in navigator){
+  // ── Service Worker Registration (only on hosted URLs, not local files) ──
+  if('serviceWorker' in navigator && location.protocol !== 'file:'){
     window.addEventListener('load', function(){
       navigator.serviceWorker.register('./service-worker.js')
         .then(function(reg){
