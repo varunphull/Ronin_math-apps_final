@@ -126,21 +126,38 @@ function dragDot(sx,sy,color,label,id,lx,ly){
 }
 
 // ═══════════════════════════════════════════════════
-// DRAG ENGINE
+// DRAG ENGINE — uses actual SVG viewBox, works at any display size
 // ═══════════════════════════════════════════════════
 let _dragCleanup=null;
 function attachDrag(svgId,onMove){
   if(_dragCleanup){_dragCleanup();_dragCleanup=null;}
   const svg=document.getElementById(svgId);if(!svg)return;
   let active=null;
-  function getPos(e){const rect=svg.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{sx:(t.clientX-rect.left)*(W/rect.width),sy:(t.clientY-rect.top)*(H/rect.height)};}
+  // Read viewBox to get logical dimensions — works regardless of CSS scaling
+  function getVB(){const vb=svg.viewBox.baseVal;return{vw:vb.width||W,vh:vb.height||H};}
+  function getPos(e){
+    const rect=svg.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    const{vw,vh}=getVB();
+    return{sx:(t.clientX-rect.left)*(vw/rect.width),sy:(t.clientY-rect.top)*(vh/rect.height)};
+  }
   function onDown(e){const g=e.target.closest('.dp');if(!g)return;e.preventDefault();active=g.dataset.id;}
-  function onMv(e){if(!active)return;e.preventDefault();const pos=getPos(e);const m=toMath(pos.sx,pos.sy);onMove(active,snap(m.x),snap(m.y));}
+  function onMv(e){
+    if(!active)return;e.preventDefault();
+    const pos=getPos(e);
+    const{vw,vh}=getVB();
+    const m=toMath(pos.sx,pos.sy,vw,vh);
+    onMove(active,snap(m.x),snap(m.y));
+  }
   function onUp(){active=null;}
   svg.addEventListener('mousedown',onDown);svg.addEventListener('touchstart',onDown,{passive:false});
   window.addEventListener('mousemove',onMv);window.addEventListener('mouseup',onUp);
   window.addEventListener('touchmove',onMv,{passive:false});window.addEventListener('touchend',onUp);
-  _dragCleanup=()=>{svg.removeEventListener('mousedown',onDown);svg.removeEventListener('touchstart',onDown);window.removeEventListener('mousemove',onMv);window.removeEventListener('mouseup',onUp);window.removeEventListener('touchmove',onMv);window.removeEventListener('touchend',onUp);};
+  _dragCleanup=()=>{
+    svg.removeEventListener('mousedown',onDown);svg.removeEventListener('touchstart',onDown);
+    window.removeEventListener('mousemove',onMv);window.removeEventListener('mouseup',onUp);
+    window.removeEventListener('touchmove',onMv);window.removeEventListener('touchend',onUp);
+  };
 }
 
 // ═══════════════════════════════════════════════════
@@ -265,7 +282,6 @@ function renderGradient(){
     <text x="${svB.sx+14}" y="${(svA.sy+svB.sy)/2+4}" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">Δy=${dy}</text>
     ${dragDot(svA.sx,svA.sy,'#818cf8',`A(${A.x},${A.y})`,'grad-A')}
     ${dragDot(svB.sx,svB.sy,'#34d399',`B(${B.x},${B.y})`,'grad-B')}`;
-  setTimeout(()=>attachDrag('svg-grad',(id,x,y)=>{if(id==='grad-A')S.grad.A={x,y};else S.grad.B={x,y};rerender();}),30);
   return pageWrap('Finding Gradient','📈','Drag A and B to see the gradient update in real-time.',`
     <div class="two-col">${makeSVG(inner,'svg-grad')}
       <div class="ctrl-col">
@@ -291,7 +307,6 @@ function renderMidpoint(){
     <text x="${svM.sx+14}" y="${svM.sy-10}" fill="#fbbf24" font-size="12" font-weight="700" font-family="Space Grotesk">M(${mx},${my})</text>
     ${dragDot(svA.sx,svA.sy,'#818cf8',`A(${A.x},${A.y})`,'mid-A')}
     ${dragDot(svB.sx,svB.sy,'#34d399',`B(${B.x},${B.y})`,'mid-B')}`;
-  setTimeout(()=>attachDrag('svg-mid',(id,x,y)=>{if(id==='mid-A')S.mid.A={x,y};else S.mid.B={x,y};rerender();}),30);
   return pageWrap('Midpoint of a Line','🎯','Drag A and B to find their midpoint M.',`
     <div class="two-col">${makeSVG(inner,'svg-mid')}
       <div class="ctrl-col">
@@ -334,11 +349,6 @@ function renderBearings(){
     <text x="${svFrom.sx+62}" y="${svFrom.sy-14}" fill="#fbbf24" font-size="14" font-weight="700" font-family="Space Grotesk">${bs}°</text>
     ${dragDot(svFrom.sx,svFrom.sy,'#f43f5e',`${fromLabel}(${from.x},${from.y})`,'bear-from')}
     ${dragDot(svTo.sx,svTo.sy,'#818cf8',`${toLabel}(${to.x},${to.y})`,'bear-to')}`;
-  setTimeout(()=>attachDrag('svg-bear',(id,x,y)=>{
-    if(id==='bear-from'){if(mode==='forward')S.bear.A={x,y};else S.bear.B={x,y};}
-    else{if(mode==='forward')S.bear.B={x,y};else S.bear.A={x,y};}
-    rerender();
-  }),30);
   return pageWrap('Bearings','🧭','Drag points to see bearings update. Switch between forward and back bearing.',`
     ${tabs([['forward','Bearing of B from A'],['back','Bearing of A from B']],mode,"S.bear.mode=__V__;rerender()")}
     <div class="two-col">${makeSVG(inner,'svg-bear')}
@@ -381,7 +391,6 @@ function renderArea(){
       ${dragDot(svC.sx,svC.sy,'#f59e0b',`C(${C.x},${C.y})`,'area-tC')}`;
     right=fbox('Triangle Area','½|x₁(y₂−y₃)+x₂(y₃−y₁)+x₃(y₁−y₂)|',area+' sq units','amber')+
       steps([{t:'Vertices',c:`A(${A.x},${A.y}), B(${B.x},${B.y}), C(${C.x},${C.y})`},{t:'Shoelace',c:`½|${A.x}(${B.y-C.y})+${B.x}(${C.y-A.y})+${C.x}(${A.y-B.y})|`},{t:'Area',c:`${area} sq units`}]);
-    setTimeout(()=>attachDrag('svg-area',(id,x,y)=>{if(id==='area-tA')s.triA={x,y};else if(id==='area-tB')s.triB={x,y};else s.triC={x,y};rerender();}),30);
   } else {
     const{rectA:A,rectB:B}=s;
     const svA=toSVG(A.x,A.y),svB=toSVG(B.x,B.y);
@@ -393,7 +402,6 @@ function renderArea(){
       ${dragDot(svA.sx,svA.sy,'#818cf8',`A(${A.x},${A.y})`,'area-rA')}
       ${dragDot(svB.sx,svB.sy,'#34d399',`B(${B.x},${B.y})`,'area-rB')}`;
     right=fbox('Rectangle Area','A = w × h',area+' sq units','indigo')+steps([{t:'Width',c:`|${B.x}−${A.x}|=${w}`},{t:'Height',c:`|${B.y}−${A.y}|=${h}`},{t:'Area',c:`${w}×${h}=${area}`}]);
-    setTimeout(()=>attachDrag('svg-area',(id,x,y)=>{if(id==='area-rA')s.rectA={x,y};else s.rectB={x,y};rerender();}),30);
   }
   return pageWrap('Area of Shapes','📐','Drag vertices to reshape and recalculate.',`
     ${tabs([['triangle','Triangle'],['rectangle','Rectangle']],s.shape,"S.area.shape=__V__;rerender()")}
@@ -1083,8 +1091,45 @@ const PAGES={
   units:renderUnits,parallelogram:renderParallelogram,transformations:renderTransformations,
   percentages:renderPercentages,ratio:renderRatio,probability:renderProbability,circles:renderCircles,
 };
-function navigate(page){if(_dragCleanup){_dragCleanup();_dragCleanup=null;}PAGE=page;window.scrollTo(0,0);rerender();}
-function rerender(){document.getElementById('app').innerHTML=(PAGES[PAGE]||renderDashboard)();}
+function navigate(page){
+  if(_dragCleanup){_dragCleanup();_dragCleanup=null;}
+  PAGE=page;window.scrollTo(0,0);rerender();
+}
+function rerender(){
+  document.getElementById('app').innerHTML=(PAGES[PAGE]||renderDashboard)();
+  // Attach drag after DOM paint using rAF - reliable at any screen size
+  requestAnimationFrame(function(){
+    if(PAGE==='gradient'){
+      attachDrag('svg-grad',function(id,x,y){
+        if(id==='grad-A')S.grad.A={x,y};else S.grad.B={x,y};rerender();
+      });
+    } else if(PAGE==='midpoint'){
+      attachDrag('svg-mid',function(id,x,y){
+        if(id==='mid-A')S.mid.A={x,y};else S.mid.B={x,y};rerender();
+      });
+    } else if(PAGE==='bearings'){
+      attachDrag('svg-bear',function(id,x,y){
+        var m=S.bear.mode;
+        if(id==='bear-from'){if(m==='forward')S.bear.A={x,y};else S.bear.B={x,y};}
+        else{if(m==='forward')S.bear.B={x,y};else S.bear.A={x,y};}
+        rerender();
+      });
+    } else if(PAGE==='area'){
+      if(S.area.shape==='triangle'){
+        attachDrag('svg-area',function(id,x,y){
+          if(id==='area-tA')S.area.triA={x,y};
+          else if(id==='area-tB')S.area.triB={x,y};
+          else S.area.triC={x,y};
+          rerender();
+        });
+      } else {
+        attachDrag('svg-area',function(id,x,y){
+          if(id==='area-rA')S.area.rectA={x,y};else S.area.rectB={x,y};rerender();
+        });
+      }
+    }
+  });
+}
 window.navigate=navigate;window.rerender=rerender;window.S=S;
 rerender();
 </script>
