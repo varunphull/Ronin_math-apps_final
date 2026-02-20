@@ -4,675 +4,1018 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ronin's Maths Interactive Tool</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    * { font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; }
-    .mono { font-family: 'JetBrains Mono', monospace; }
-    body { background: #080d1a; color: #e2e8f0; margin: 0; }
-    .grid-bg {
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080d1a; --card: rgba(15,23,42,0.85); --border: rgba(99,102,241,0.18);
+      --text: #e2e8f0; --muted: #64748b; --indigo: #6366f1; --indigo-light: #a5b4fc;
+      --emerald: #10b981; --amber: #f59e0b; --rose: #f43f5e;
+    }
+    body { font-family: 'Space Grotesk', sans-serif; background: var(--bg); color: var(--text);
       background-image: linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
         linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
-      background-size: 32px 32px;
-    }
-    input[type=range] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: #1e293b; outline: none; }
-    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; }
-    .tab-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
-    .tab-btn.active { background: rgba(99,102,241,0.25); color: #a5b4fc; }
-    .tab-btn:not(.active) { background: transparent; color: #64748b; }
-    .tab-btn:hover:not(.active) { color: #94a3b8; }
-    .card { background: rgba(15,23,42,0.8); border: 1px solid rgba(99,102,241,0.15); border-radius: 16px; }
-    .formula-box { border-radius: 12px; padding: 16px; }
-    .step { background: rgba(15,23,42,0.6); border: 1px solid rgba(99,102,241,0.1); border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; cursor: pointer; }
-    .step:hover { border-color: rgba(99,102,241,0.3); }
-    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: #64748b; font-size: 14px; cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 24px; transition: color 0.2s; }
-    .back-btn:hover { color: #e2e8f0; }
-    .topic-card { background: rgba(15,23,42,0.7); border: 1px solid rgba(99,102,241,0.12); border-radius: 16px; padding: 20px; cursor: pointer; transition: all 0.2s; }
-    .topic-card:hover { border-color: rgba(99,102,241,0.4); background: rgba(30,41,59,0.8); transform: translateY(-2px); }
-    svg text { user-select: none; }
-    .page { display: none; }
-    .page.active { display: block; }
-    .slider-wrap { margin-bottom: 16px; }
-    .slider-label { display: flex; justify-content: space-between; margin-bottom: 8px; }
-    input[type=range] { width: 100%; }
+      background-size: 32px 32px; min-height: 100vh; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    /* Sliders */
+    input[type=range] { -webkit-appearance:none; appearance:none; width:100%; height:5px;
+      border-radius:4px; background:#1e293b; outline:none; cursor:pointer; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px;
+      border-radius:50%; background:#6366f1; border:2px solid #fff; cursor:pointer; }
+    input[type=number] { background:#0f172a; border:1px solid rgba(99,102,241,0.25);
+      border-radius:8px; color:#f1f5f9; padding:6px 10px; width:70px; font-size:13px;
+      font-family:'JetBrains Mono',monospace; text-align:center; outline:none; }
+    input[type=number]:focus { border-color:#6366f1; }
+    input[type=number]::-webkit-inner-spin-button { opacity:1; }
+    /* Buttons */
+    .btn { padding:6px 14px; border-radius:8px; font-size:13px; font-weight:600;
+      cursor:pointer; border:none; transition:all 0.15s; font-family:'Space Grotesk',sans-serif; }
+    .btn-tab { background:transparent; color:#64748b; }
+    .btn-tab:hover { color:#94a3b8; }
+    .btn-tab.active { background:rgba(99,102,241,0.25); color:#a5b4fc; }
+    .btn-back { display:inline-flex; align-items:center; gap:6px; color:#64748b; font-size:14px;
+      cursor:pointer; background:none; border:none; padding:0; margin-bottom:24px;
+      font-family:'Space Grotesk',sans-serif; transition:color 0.15s; }
+    .btn-back:hover { color:#e2e8f0; }
+    /* Cards */
+    .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:20px; }
+    .topic-card { background:rgba(15,23,42,0.7); border:1px solid rgba(99,102,241,0.12);
+      border-radius:16px; padding:20px; cursor:pointer; transition:all 0.2s; }
+    .topic-card:hover { border-color:rgba(99,102,241,0.4); background:rgba(30,41,59,0.8); transform:translateY(-2px); }
+    /* Formula box */
+    .fbox { border-radius:12px; padding:16px; }
+    /* Steps */
+    .step { background:rgba(15,23,42,0.6); border:1px solid rgba(99,102,241,0.1);
+      border-radius:10px; padding:12px 16px; margin-bottom:8px; cursor:pointer; }
+    .step:hover { border-color:rgba(99,102,241,0.3); }
+    .step-body { font-size:12px; color:#94a3b8; margin-top:8px; display:none; }
+    .step.open .step-body { display:block; }
+    /* Tab bar */
+    .tab-bar { display:flex; gap:6px; background:rgba(15,23,42,0.6); padding:6px;
+      border-radius:10px; border:1px solid rgba(99,102,241,0.15); flex-wrap:wrap; width:fit-content; margin-bottom:20px; }
+    /* Layout */
+    .page-wrap { min-height:100vh; padding:24px 16px; max-width:980px; margin:0 auto; }
+    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start; }
+    @media(max-width:700px) { .two-col { grid-template-columns:1fr; } }
+    .ctrl-col { display:flex; flex-direction:column; gap:14px; }
+    /* SVG */
+    svg { display:block; max-width:100%; border-radius:12px; }
+    svg text { user-select:none; }
+    /* Slider+input row */
+    .si-row { margin-bottom:18px; }
+    .si-label { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .si-label span:first-child { font-size:13px; font-weight:600; }
+    .si-controls { display:flex; align-items:center; gap:10px; }
+    .si-controls input[type=range] { flex:1; }
+    /* Info box */
+    .info-box { background:rgba(15,23,42,0.6); border:1px solid rgba(99,102,241,0.1); border-radius:12px; padding:16px; }
+    .info-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#475569; margin-bottom:8px; }
+    /* Dashboard grid */
+    .dash-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:16px; }
+    /* Probability */
+    .prob-ball { width:32px; height:32px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center;
+      font-size:12px; font-weight:700; cursor:pointer; border:2px solid transparent; transition:all 0.15s; }
+    /* Scrollable steps */
+    .steps-wrap { max-height:280px; overflow-y:auto; padding-right:4px; }
+    .steps-wrap::-webkit-scrollbar { width:4px; }
+    .steps-wrap::-webkit-scrollbar-thumb { background:#1e293b; border-radius:4px; }
   </style>
 </head>
-<body class="grid-bg min-h-screen">
-
+<body>
 <div id="app"></div>
 
 <script>
-// ─── STATE ───────────────────────────────────────────────────────────────────
-let currentPage = 'dashboard';
+'use strict';
 
-function navigate(page) {
-  currentPage = page;
-  render();
-}
+// ═══════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════
+let PAGE = 'dashboard';
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-function toSVG(x, y, W=400, H=400, range=10) {
-  const cell = W / (range * 2);
-  return { sx: W/2 + x*cell, sy: H/2 - y*cell };
-}
-function toMath(sx, sy, W=400, H=400, range=10) {
-  const cell = W / (range * 2);
-  return { x: (sx - W/2) / cell, y: (H/2 - sy) / cell };
-}
-function round1(v) { return Math.round(v*10)/10; }
-function round2(v) { return Math.round(v*100)/100; }
+const S = {
+  grad:  { A:{x:-4,y:-3}, B:{x:4,y:4} },
+  mid:   { A:{x:-5,y:-3}, B:{x:5,y:4} },
+  bear:  { A:{x:0,y:0},   B:{x:4,y:6} },
+  area:  { shape:'triangle', triA:{x:-5,y:-4}, triB:{x:5,y:-4}, triC:{x:0,y:5}, rectA:{x:-4,y:-3}, rectB:{x:4,y:4} },
+  prism: { base:4, height:3, depth:5 },
+  linear:{ m:1, c:0 },
+  unit:  { value:10, dir:'mi2km' },
+  trans: { type:'translate', shape:[{x:1,y:1},{x:4,y:1},{x:2.5,y:4}], tx:2, ty:1, angle:90, cx:0, cy:0, sf:2 },
+  para:  { type:'parallelogram', b:6, h:4, a:3 },
+  pct:   { original:80, pctChange:25, dir:'increase', findType:'new' },
+  ratio: { a:3, b:5, total:160, simplA:12, simplB:18 },
+  prob:  { mode:'single', balls:['red','red','red','blue','blue','green'], picked:null },
+  circle:{ r:5, mode:'full', sector:90 },
+};
 
-// ─── COORDINATE GRID SVG ────────────────────────────────────────────────────
-function drawGrid(W=400, H=400, range=10) {
-  const cell = W / (range * 2);
-  const cx = W/2, cy = H/2;
-  let lines = '';
-  for (let i = -range; i <= range; i++) {
-    const x = cx + i*cell, y = cy + i*cell;
-    const isAxis = i === 0;
-    lines += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="${isAxis?'#94a3b8':'#1e293b'}" stroke-width="${isAxis?2:0.5}"/>`;
-    lines += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="${isAxis?'#94a3b8':'#1e293b'}" stroke-width="${isAxis?2:0.5}"/>`;
-    if (i !== 0 && i % 2 === 0) {
-      lines += `<text x="${x}" y="${cy+16}" text-anchor="middle" fill="#64748b" font-size="10" font-family="Space Grotesk">${i}</text>`;
-      lines += `<text x="${cx-12}" y="${y+4}" text-anchor="middle" fill="#64748b" font-size="10" font-family="Space Grotesk">${-i}</text>`;
+// ═══════════════════════════════════════════════════════════════════
+// COORDINATE HELPERS
+// ═══════════════════════════════════════════════════════════════════
+const W=400, H=400, RANGE=10;
+function toSVG(x,y,w=W,h=H,r=RANGE){ const c=w/(r*2); return {sx:w/2+x*c, sy:h/2-y*c}; }
+function toMath(sx,sy,w=W,h=H,r=RANGE){ const c=w/(r*2); return {x:(sx-w/2)/c, y:(h/2-sy)/c}; }
+function snap(v){ return Math.round(Math.max(-RANGE+1,Math.min(RANGE-1,v))); }
+function r1(v){ return Math.round(v*10)/10; }
+function r2(v){ return Math.round(v*100)/100; }
+function gcd(a,b){ a=Math.abs(a);b=Math.abs(b); while(b){[a,b]=[b,a%b];} return a; }
+
+// ═══════════════════════════════════════════════════════════════════
+// GRID DRAWING
+// ═══════════════════════════════════════════════════════════════════
+function drawGrid(w=W,h=H,range=RANGE){
+  const cell=w/(range*2), cx=w/2, cy=h/2;
+  let s='';
+  for(let i=-range;i<=range;i++){
+    const x=cx+i*cell, y=cy+i*cell, axis=i===0;
+    s+=`<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="${axis?'#334155':'#1a2535'}" stroke-width="${axis?1.5:.5}"/>`;
+    s+=`<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="${axis?'#334155':'#1a2535'}" stroke-width="${axis?1.5:.5}"/>`;
+    if(i!==0&&i%2===0){
+      s+=`<text x="${x}" y="${cy+15}" text-anchor="middle" fill="#334155" font-size="9" font-family="Space Grotesk">${i}</text>`;
+      s+=`<text x="${cx-10}" y="${y+3}" text-anchor="end" fill="#334155" font-size="9" font-family="Space Grotesk">${-i}</text>`;
     }
   }
-  lines += `<polygon points="${W-8},${cy-4} ${W},${cy} ${W-8},${cy+4}" fill="#94a3b8"/>`;
-  lines += `<polygon points="${cx-4},8 ${cx},0 ${cx+4},8" fill="#94a3b8"/>`;
-  lines += `<text x="${W-6}" y="${cy-10}" fill="#94a3b8" font-size="12" font-weight="600" text-anchor="end">x</text>`;
-  lines += `<text x="${cx+14}" y="14" fill="#94a3b8" font-size="12" font-weight="600">y</text>`;
-  lines += `<text x="${cx-10}" y="${cy+16}" fill="#64748b" font-size="10">O</text>`;
-  return lines;
+  s+=`<polygon points="${w-6},${cy-3} ${w},${cy} ${w-6},${cy+3}" fill="#475569"/>`;
+  s+=`<polygon points="${cx-3},6 ${cx},0 ${cx+3},6" fill="#475569"/>`;
+  s+=`<text x="${w-4}" y="${cy-8}" fill="#475569" font-size="11" font-weight="600" text-anchor="end">x</text>`;
+  s+=`<text x="${cx+10}" y="12" fill="#475569" font-size="11" font-weight="600">y</text>`;
+  return s;
 }
 
-function svgWrap(inner, W=400, H=400, id='') {
-  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" id="${id}" 
-    style="background:#0a0f1a;border-radius:12px;display:block;max-width:100%">
-    ${drawGrid(W,H)}${inner}</svg>`;
+function makeSVG(inner,id,w=W,h=H){
+  return `<svg id="${id}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="background:#060b14;border-radius:12px;touch-action:none">${drawGrid(w,h)}${inner}</svg>`;
 }
 
-// ─── DRAGGABLE POINT ────────────────────────────────────────────────────────
-function draggablePoint(sx, sy, color, label='', id='', coords='') {
-  return `<g class="drag-point" data-id="${id}" style="cursor:grab">
-    <circle cx="${sx}" cy="${sy}" r="14" fill="${color}" opacity="0.15"/>
+function dragDot(sx,sy,color,label,id,lx,ly){
+  const tx=lx!==undefined?lx:sx+12, ty=ly!==undefined?ly:sy-14;
+  return `<g class="dp" data-id="${id}" style="cursor:grab">
+    <circle cx="${sx}" cy="${sy}" r="16" fill="${color}" opacity=".1"/>
     <circle cx="${sx}" cy="${sy}" r="7" fill="${color}" stroke="#fff" stroke-width="2"/>
-    ${label ? `<text x="${sx+12}" y="${sy-12}" fill="${color}" font-size="12" font-weight="700" font-family="Space Grotesk">${label}${coords}</text>` : ''}
+    ${label?`<text x="${tx}" y="${ty}" fill="${color}" font-size="11" font-weight="700" font-family="Space Grotesk">${label}</text>`:''}
   </g>`;
 }
 
-// ─── FORMULA BOX ─────────────────────────────────────────────────────────────
-function formulaBox(title, formula, result, color='indigo') {
-  const colors = {
-    indigo: ['rgba(99,102,241,0.12)', 'rgba(99,102,241,0.3)', '#a5b4fc', '#818cf8'],
-    emerald: ['rgba(16,185,129,0.12)', 'rgba(16,185,129,0.3)', '#6ee7b7', '#34d399'],
-    amber: ['rgba(245,158,11,0.12)', 'rgba(245,158,11,0.3)', '#fcd34d', '#f59e0b'],
-    rose: ['rgba(244,63,94,0.12)', 'rgba(244,63,94,0.3)', '#fda4af', '#f43f5e'],
+// ═══════════════════════════════════════════════════════════════════
+// DRAGGING ENGINE — updates SVG in-place, no full re-render
+// ═══════════════════════════════════════════════════════════════════
+let _dragCleanup = null;
+
+function attachDrag(svgId, onMove){
+  if(_dragCleanup){ _dragCleanup(); _dragCleanup=null; }
+  const svg = document.getElementById(svgId);
+  if(!svg) return;
+
+  let active = null;
+
+  function getPos(e){
+    const rect=svg.getBoundingClientRect();
+    const t=e.touches?e.touches[0]:e;
+    return { sx:(t.clientX-rect.left)*(W/rect.width), sy:(t.clientY-rect.top)*(H/rect.height) };
+  }
+
+  function onDown(e){
+    const g=e.target.closest('.dp');
+    if(!g) return;
+    e.preventDefault();
+    active=g.dataset.id;
+  }
+  function onMv(e){
+    if(!active) return;
+    e.preventDefault();
+    const pos=getPos(e);
+    const m=toMath(pos.sx,pos.sy);
+    onMove(active, snap(m.x), snap(m.y));
+  }
+  function onUp(){ active=null; }
+
+  svg.addEventListener('mousedown',onDown);
+  svg.addEventListener('touchstart',onDown,{passive:false});
+  window.addEventListener('mousemove',onMv);
+  window.addEventListener('mouseup',onUp);
+  window.addEventListener('touchmove',onMv,{passive:false});
+  window.addEventListener('touchend',onUp);
+
+  _dragCleanup=()=>{
+    svg.removeEventListener('mousedown',onDown);
+    svg.removeEventListener('touchstart',onDown);
+    window.removeEventListener('mousemove',onMv);
+    window.removeEventListener('mouseup',onUp);
+    window.removeEventListener('touchmove',onMv);
+    window.removeEventListener('touchend',onUp);
   };
-  const [bg, border, text, accent] = colors[color]||colors.indigo;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UI PRIMITIVES
+// ═══════════════════════════════════════════════════════════════════
+const COLORS={
+  indigo:['rgba(99,102,241,.12)','rgba(99,102,241,.35)','#a5b4fc','#818cf8'],
+  emerald:['rgba(16,185,129,.12)','rgba(16,185,129,.35)','#6ee7b7','#34d399'],
+  amber:['rgba(245,158,11,.12)','rgba(245,158,11,.35)','#fcd34d','#f59e0b'],
+  rose:['rgba(244,63,94,.12)','rgba(244,63,94,.35)','#fda4af','#f43f5e'],
+  violet:['rgba(139,92,246,.12)','rgba(139,92,246,.35)','#c4b5fd','#a78bfa'],
+};
+
+function fbox(title,formula,result,color='indigo'){
+  const [bg,border,text,accent]=COLORS[color]||COLORS.indigo;
   return `<div style="background:${bg};border:1px solid ${border};border-radius:12px;padding:16px">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${accent};margin-bottom:6px">${title}</div>
-    <div class="mono" style="font-size:13px;color:#cbd5e1;margin-bottom:8px">${formula}</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${accent};margin-bottom:5px">${title}</div>
+    <div class="mono" style="font-size:12px;color:#94a3b8;margin-bottom:6px">${formula}</div>
     ${result!==undefined?`<div style="font-size:20px;font-weight:700;color:${text}">${result}</div>`:''}
   </div>`;
 }
 
-// ─── STEP BY STEP ──────────────────────────────────────────────────────────
-function stepByStep(steps) {
-  return steps.map((s,i)=>`
-    <div class="step" onclick="this.querySelector('.step-body').style.display=this.querySelector('.step-body').style.display==='none'?'block':'none'">
+function steps(arr){
+  return `<div class="steps-wrap">`+arr.map((s,i)=>`
+    <div class="step" onclick="this.classList.toggle('open')">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:13px;font-weight:600;color:#e2e8f0">Step ${i+1}: ${s.title}</div>
-        <span style="color:#64748b;font-size:12px">▼</span>
+        <div style="font-size:13px;font-weight:600;color:#e2e8f0">Step ${i+1}: ${s.t}</div>
+        <span style="color:#64748b;font-size:10px">▼</span>
       </div>
-      <div class="step-body mono" style="font-size:12px;color:#94a3b8;margin-top:8px;display:none">${s.content}</div>
-    </div>`).join('');
+      <div class="step-body mono">${s.c}</div>
+    </div>`).join('')+`</div>`;
 }
 
-// ─── DRAGGING LOGIC ──────────────────────────────────────────────────────────
-let activeDrag = null;
-
-function initDragging(svgId, points, onUpdate, W=400, H=400, range=10) {
-  const svg = document.getElementById(svgId);
-  if (!svg) return;
-
-  function getSVGPos(e) {
-    const rect = svg.getBoundingClientRect();
-    const touch = e.touches ? e.touches[0] : e;
-    return {
-      sx: (touch.clientX - rect.left) * (W / rect.width),
-      sy: (touch.clientY - rect.top) * (H / rect.height)
-    };
-  }
-
-  svg.querySelectorAll('.drag-point').forEach(g => {
-    const id = g.dataset.id;
-    const down = (e) => {
-      e.preventDefault();
-      activeDrag = id;
-      const move = (ev) => {
-        if (activeDrag !== id) return;
-        ev.preventDefault();
-        const pos = getSVGPos(ev);
-        const math = toMath(pos.sx, pos.sy, W, H, range);
-        const cx = Math.round(Math.max(-range+1, Math.min(range-1, math.x)));
-        const cy = Math.round(Math.max(-range+1, Math.min(range-1, math.y)));
-        onUpdate(id, cx, cy);
-      };
-      const up = () => {
-        activeDrag = null;
-        window.removeEventListener('mousemove', move);
-        window.removeEventListener('mouseup', up);
-        window.removeEventListener('touchmove', move);
-        window.removeEventListener('touchend', up);
-      };
-      window.addEventListener('mousemove', move);
-      window.addEventListener('mouseup', up);
-      window.addEventListener('touchmove', move, {passive:false});
-      window.addEventListener('touchend', up);
-    };
-    g.addEventListener('mousedown', down);
-    g.addEventListener('touchstart', down, {passive:false});
-  });
-}
-
-// ─── PAGES STATE ──────────────────────────────────────────────────────────────
-const state = {
-  // Gradient
-  grad: { A: {x:-4,y:-3}, B: {x:4,y:4} },
-  // Midpoint
-  mid: { A: {x:-5,y:-3}, B: {x:5,y:4} },
-  // Bearings
-  bear: { A: {x:0,y:0}, B: {x:4,y:6} },
-  // Area
-  area: { shape:'triangle', triA:{x:-5,y:-4}, triB:{x:5,y:-4}, triC:{x:0,y:5},
-           rectA:{x:-4,y:-3}, rectB:{x:4,y:4} },
-  // Prism
-  prism: { base:4, height:3, depth:5 },
-  // Linear
-  linear: { m:1, c:0 },
-  // Unit converter
-  unit: { value:10, dir:'mi2km' },
-  // Transformations
-  trans: { type:'translate', shape:[{x:1,y:1},{x:4,y:1},{x:2.5,y:4}], tx:2, ty:1, rx:0, ry:0, angle:90, sx:0, sy:0, sf:2 },
-  // Parallelogram/Trapezium
-  para: { type:'parallelogram', b:6, h:4, a:3 },
-};
-
-// ─── DASHBOARD ───────────────────────────────────────────────────────────────
-function renderDashboard() {
-  const topics = [
-    { title:'Finding Gradient', desc:'Drag two points and watch the gradient update in real-time.', icon:'📈', page:'gradient', color:'#6366f1' },
-    { title:'Midpoint of a Line', desc:'Discover the middle point between two coordinates.', icon:'🎯', page:'midpoint', color:'#10b981' },
-    { title:'Bearings', desc:'Measure angles clockwise from North. Drag points to find bearings.', icon:'🧭', page:'bearings', color:'#6366f1' },
-    { title:'2D Transformations', desc:'Translate, reflect, rotate, and enlarge shapes interactively.', icon:'🔄', page:'transformations', color:'#f43f5e' },
-    { title:'Parallelogram & Trapezium', desc:'Calculate areas using the correct formulas. Adjust dimensions.', icon:'⬡', page:'parallelogram', color:'#f59e0b' },
-    { title:'Area of Shapes', desc:'Drag vertices to compute area of triangles, rectangles and more.', icon:'📐', page:'area', color:'#10b981' },
-    { title:'3D Prisms', desc:'Calculate volume and surface area. Adjust dimensions with sliders.', icon:'📦', page:'prisms', color:'#6366f1' },
-    { title:'Miles ↔ Kilometres', desc:'Convert between imperial and metric distance units.', icon:'↔️', page:'units', color:'#f43f5e' },
-    { title:'Linear Equations', desc:'Change m and c in y = mx + c and see the line move in real-time.', icon:'📉', page:'linear', color:'#f59e0b' },
-  ];
-  return `
-  <div class="min-h-screen p-4 md:p-8" style="max-width:900px;margin:0 auto">
-    <div style="margin-bottom:40px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
-        <div style="width:40px;height:40px;border-radius:12px;background:rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:center;font-size:20px">🧮</div>
-        <h1 style="font-size:clamp(22px,4vw,30px);font-weight:700;color:#f1f5f9;margin:0">Ronin's Maths Interactive Tool</h1>
-      </div>
-      <p style="color:#64748b;font-size:14px;margin-left:52px">Cambridge IGCSE maths concepts brought to life — drag, explore, and learn.</p>
+// slider + number input
+function SI(label, color, val, min, max, step, key, subkey){
+  const kk=subkey?`S.${key}.${subkey}=${subkey==='m'||subkey==='c'?'':''}parseFloat(this.value);rerender()`
+    :`S.${key}=parseFloat(this.value);rerender()`;
+  const id=`si_${key}_${subkey||'v'}`;
+  return `<div class="si-row">
+    <div class="si-label">
+      <span style="color:${color}">${label}</span>
+      <input type="number" min="${min}" max="${max}" step="${step}" value="${val}" 
+        oninput="S.${subkey?key+'.'+subkey:key}=parseFloat(this.value)||0;document.getElementById('${id}').value=this.value;rerender()"
+        style="width:70px">
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
-      ${topics.map(t=>`
-        <div class="topic-card" onclick="navigate('${t.page}')">
-          <div style="font-size:28px;margin-bottom:10px">${t.icon}</div>
-          <div style="font-weight:700;color:#f1f5f9;margin-bottom:6px;font-size:15px">${t.title}</div>
-          <div style="font-size:13px;color:#64748b;line-height:1.5">${t.desc}</div>
-        </div>`).join('')}
+    <div class="si-controls">
+      <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}"
+        oninput="S.${subkey?key+'.'+subkey:key}=parseFloat(this.value);this.previousElementSibling&&(this.previousElementSibling.value=this.value);rerender()">
     </div>
-    <p style="text-align:center;color:#1e293b;font-size:12px;margin-top:32px">Drag points on the graphs to explore • Adjust sliders to change dimensions</p>
   </div>`;
 }
 
-// ─── GRADIENT ────────────────────────────────────────────────────────────────
-function renderGradient() {
-  const {A,B} = state.grad;
-  const W=400,H=400,range=10;
-  const svA=toSVG(A.x,A.y,W,H,range), svB=toSVG(B.x,B.y,W,H,range);
-  const dx=B.x-A.x, dy=B.y-A.y;
-  const m = dx===0 ? 'undefined' : round2(dy/dx);
-  const steps=[
-    {title:'Label the two points', content:`A = (${A.x}, ${A.y}), B = (${B.x}, ${B.y})`},
-    {title:'Find the rise (Δy)', content:`Δy = y₂ − y₁ = ${B.y} − ${A.y} = ${dy}`},
-    {title:'Find the run (Δx)', content:`Δx = x₂ − x₁ = ${B.x} − ${A.x} = ${dx}`},
-    {title:'Apply the formula', content:`m = Δy/Δx = ${dy}/${dx} = ${m}`},
+function tabs(items, activeVal, setExpr){
+  return `<div class="tab-bar">`+items.map(([v,l])=>
+    `<button class="btn btn-tab${activeVal===v?' active':''}" onclick="${setExpr.replace('__V__',`'${v}'`)}">${l}</button>`
+  ).join('')+`</div>`;
+}
+
+function pageWrap(title,icon,sub,content){
+  return `<div class="page-wrap">
+    <button class="btn-back" onclick="navigate('dashboard')">← Back to Topics</button>
+    <div style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:20px">${icon}</div>
+        <h1 style="font-size:clamp(18px,3vw,26px);font-weight:700;color:#f1f5f9">${title}</h1>
+      </div>
+      <p style="color:#64748b;font-size:14px;margin-left:52px">${sub}</p>
+    </div>
+    ${content}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════════
+function renderDashboard(){
+  const topics=[
+    {icon:'📈',title:'Finding Gradient',desc:'Drag two points and watch gradient update live.',page:'gradient'},
+    {icon:'🎯',title:'Midpoint of a Line',desc:'Find the exact middle between two coordinates.',page:'midpoint'},
+    {icon:'🧭',title:'Bearings',desc:'Measure angles clockwise from North interactively.',page:'bearings'},
+    {icon:'🔄',title:'2D Transformations',desc:'Translate, reflect, rotate and enlarge shapes.',page:'transformations'},
+    {icon:'⬡',title:'Parallelogram & Trapezium',desc:'Compute areas with adjustable sliders.',page:'parallelogram'},
+    {icon:'📐',title:'Area of Shapes',desc:'Drag vertices to compute triangle and rectangle areas.',page:'area'},
+    {icon:'📦',title:'3D Prisms',desc:'Volume and surface area with live 3D diagram.',page:'prisms'},
+    {icon:'↔️',title:'Miles ↔ Kilometres',desc:'Convert between imperial and metric distances.',page:'units'},
+    {icon:'📉',title:'Linear Equations',desc:'Adjust m and c in y = mx + c and watch the line move.',page:'linear'},
+    {icon:'%',title:'Percentages',desc:'Percentage increase, decrease and reverse percentage.',page:'percentages'},
+    {icon:'⚖️',title:'Ratio & Proportion',desc:'Share amounts in a ratio and simplify ratios.',page:'ratio'},
+    {icon:'🎲',title:'Probability',desc:'Explore single and combined event probability.',page:'probability'},
+    {icon:'⭕',title:'Circles',desc:'Area, circumference, arc length and sector area.',page:'circles'},
   ];
+  return `<div class="page-wrap" style="max-width:980px">
+    <div style="margin-bottom:36px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="width:44px;height:44px;border-radius:14px;background:rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:22px">🧮</div>
+        <h1 style="font-size:clamp(20px,4vw,30px);font-weight:700;color:#f1f5f9">Ronin's Maths Interactive Tool</h1>
+      </div>
+      <p style="color:#64748b;font-size:14px;margin-left:56px">Cambridge IGCSE maths — drag, explore, and learn interactively.</p>
+    </div>
+    <div class="dash-grid">${topics.map(t=>`
+      <div class="topic-card" onclick="navigate('${t.page}')">
+        <div style="font-size:26px;margin-bottom:10px">${t.icon}</div>
+        <div style="font-weight:700;color:#f1f5f9;font-size:15px;margin-bottom:5px">${t.title}</div>
+        <div style="font-size:13px;color:#64748b;line-height:1.5">${t.desc}</div>
+      </div>`).join('')}
+    </div>
+    <p style="text-align:center;color:#1e293b;font-size:12px;margin-top:28px">Drag points • Adjust sliders • Enter values manually</p>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GRADIENT
+// ═══════════════════════════════════════════════════════════════════
+function renderGradient(){
+  const {A,B}=S.grad;
+  const svA=toSVG(A.x,A.y), svB=toSVG(B.x,B.y);
+  const dx=B.x-A.x, dy=B.y-A.y;
+  const m=dx===0?'∞':r2(dy/dx);
+  // extend line across full SVG
+  let lx1=0,ly1,lx2=W,ly2;
+  if(dx===0){lx1=lx2=svA.sx;ly1=0;ly2=H;}
+  else{const slope=-dy/dx;ly1=svA.sy+slope*(svA.sx-lx1);ly2=svA.sy+slope*(svA.sx-lx2);}
   const inner=`
+    <line x1="${lx1}" y1="${ly1}" x2="${lx2}" y2="${ly2}" stroke="#6366f1" stroke-width="1.5" opacity=".4" stroke-dasharray="6,4"/>
     <line x1="${svA.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svB.sy}" stroke="#818cf8" stroke-width="2.5"/>
     <line x1="${svA.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svA.sy}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
     <line x1="${svB.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svB.sy}" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4,3"/>
-    <text x="${(svA.sx+svB.sx)/2}" y="${svA.sy+18}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">Δx = ${dx}</text>
-    <text x="${svB.sx+14}" y="${(svA.sy+svB.sy)/2}" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">Δy = ${dy}</text>
-    ${draggablePoint(svA.sx,svA.sy,'#818cf8','A',`grad-A`,` (${A.x},${A.y})`)}
-    ${draggablePoint(svB.sx,svB.sy,'#34d399','B',`grad-B`,` (${B.x},${B.y})`)}`;
-  return pageWrap('Finding Gradient','📈','Drag two points to compute the gradient (slope) of the line.',`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-      <div>${svgWrap(inner,W,H,'svg-grad')}</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${formulaBox('Gradient Formula','m = (y₂ − y₁) / (x₂ − x₁)',m==='undefined'?'Undefined (vertical)':m,'indigo')}
-        ${formulaBox('Rise (Δy)','y₂ − y₁',dy,'emerald')}
-        ${formulaBox('Run (Δx)','x₂ − x₁',dx,'amber')}
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-top:4px">Step-by-step</div>
-        ${stepByStep(steps)}
+    <text x="${(svA.sx+svB.sx)/2}" y="${svA.sy+(svA.sy>svB.sy?-8:18)}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">Δx=${dx}</text>
+    <text x="${svB.sx+14}" y="${(svA.sy+svB.sy)/2+4}" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">Δy=${dy}</text>
+    ${dragDot(svA.sx,svA.sy,'#818cf8',`A(${A.x},${A.y})`,'grad-A')}
+    ${dragDot(svB.sx,svB.sy,'#34d399',`B(${B.x},${B.y})`,'grad-B')}`;
+  setTimeout(()=>attachDrag('svg-grad',(id,x,y)=>{
+    if(id==='grad-A') S.grad.A={x,y}; else S.grad.B={x,y};
+    rerender();
+  }),30);
+  return pageWrap('Finding Gradient','📈','Drag A and B to see the gradient update in real-time.',`
+    <div class="two-col">
+      ${makeSVG(inner,'svg-grad')}
+      <div class="ctrl-col">
+        ${fbox('Gradient','m = (y₂−y₁) / (x₂−x₁)',m==='∞'?'Undefined (vertical line)':m,'indigo')}
+        ${fbox('Rise Δy','y₂ − y₁ = '+B.y+' − '+A.y,dy,'emerald')}
+        ${fbox('Run Δx','x₂ − x₁ = '+B.x+' − '+A.x,dx,'amber')}
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569">Step-by-step</div>
+        ${steps([
+          {t:'Label points',c:`A=(${A.x},${A.y}), B=(${B.x},${B.y})`},
+          {t:'Find rise Δy',c:`${B.y} − ${A.y} = ${dy}`},
+          {t:'Find run Δx',c:`${B.x} − ${A.x} = ${dx}`},
+          {t:'Calculate m',c:`m = ${dy}/${dx} = ${m}`},
+        ])}
       </div>
     </div>`);
 }
 
-// ─── MIDPOINT ─────────────────────────────────────────────────────────────────
-function renderMidpoint() {
-  const {A,B} = state.mid;
-  const W=400,H=400,range=10;
-  const svA=toSVG(A.x,A.y,W,H,range), svB=toSVG(B.x,B.y,W,H,range);
-  const mx=round1((A.x+B.x)/2), my=round1((A.y+B.y)/2);
-  const svM=toSVG(mx,my,W,H,range);
-  const steps=[
-    {title:'Label the two points', content:`A = (${A.x}, ${A.y}), B = (${B.x}, ${B.y})`},
-    {title:'Add the x-coordinates and halve', content:`Mx = (${A.x} + ${B.x}) / 2 = ${mx}`},
-    {title:'Add the y-coordinates and halve', content:`My = (${A.y} + ${B.y}) / 2 = ${my}`},
-    {title:'Write the midpoint', content:`M = (${mx}, ${my})`},
-  ];
+// ═══════════════════════════════════════════════════════════════════
+// MIDPOINT
+// ═══════════════════════════════════════════════════════════════════
+function renderMidpoint(){
+  const {A,B}=S.mid;
+  const svA=toSVG(A.x,A.y), svB=toSVG(B.x,B.y);
+  const mx=r1((A.x+B.x)/2), my=r1((A.y+B.y)/2);
+  const svM=toSVG(mx,my);
   const inner=`
     <line x1="${svA.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svB.sy}" stroke="#818cf8" stroke-width="2.5"/>
-    <circle cx="${svM.sx}" cy="${svM.sy}" r="8" fill="#fbbf24" stroke="#fff" stroke-width="2"/>
-    <text x="${svM.sx+12}" y="${svM.sy-10}" fill="#fbbf24" font-size="12" font-weight="700" font-family="Space Grotesk">M(${mx},${my})</text>
-    ${draggablePoint(svA.sx,svA.sy,'#818cf8','A','mid-A',` (${A.x},${A.y})`)}
-    ${draggablePoint(svB.sx,svB.sy,'#34d399','B','mid-B',` (${B.x},${B.y})`)}`;
-  return pageWrap('Midpoint of a Line','🎯','Drag points to find the midpoint M = ((x₁+x₂)/2, (y₁+y₂)/2).',`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-      <div>${svgWrap(inner,W,H,'svg-mid')}</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${formulaBox('Midpoint Formula','M = ((x₁+x₂)/2, (y₁+y₂)/2)',`(${mx}, ${my})`,'amber')}
-        ${formulaBox('x-coordinate','('+A.x+' + '+B.x+') / 2',mx,'indigo')}
-        ${formulaBox('y-coordinate','('+A.y+' + '+B.y+') / 2',my,'emerald')}
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-top:4px">Step-by-step</div>
-        ${stepByStep(steps)}
+    <circle cx="${svM.sx}" cy="${svM.sy}" r="9" fill="#fbbf24" stroke="#fff" stroke-width="2"/>
+    <text x="${svM.sx+14}" y="${svM.sy-10}" fill="#fbbf24" font-size="12" font-weight="700" font-family="Space Grotesk">M(${mx},${my})</text>
+    ${dragDot(svA.sx,svA.sy,'#818cf8',`A(${A.x},${A.y})`,'mid-A')}
+    ${dragDot(svB.sx,svB.sy,'#34d399',`B(${B.x},${B.y})`,'mid-B')}`;
+  setTimeout(()=>attachDrag('svg-mid',(id,x,y)=>{
+    if(id==='mid-A') S.mid.A={x,y}; else S.mid.B={x,y}; rerender();
+  }),30);
+  return pageWrap('Midpoint of a Line','🎯','Drag A and B to find their midpoint M.',`
+    <div class="two-col">
+      ${makeSVG(inner,'svg-mid')}
+      <div class="ctrl-col">
+        ${fbox('Midpoint','M = ((x₁+x₂)/2 , (y₁+y₂)/2)',`(${mx}, ${my})`,'amber')}
+        ${fbox('Midpoint x','('+A.x+' + '+B.x+') / 2',mx,'indigo')}
+        ${fbox('Midpoint y','('+A.y+' + '+B.y+') / 2',my,'emerald')}
+        ${steps([
+          {t:'Label points',c:`A=(${A.x},${A.y}), B=(${B.x},${B.y})`},
+          {t:'Average x-coords',c:`(${A.x}+${B.x})/2 = ${mx}`},
+          {t:'Average y-coords',c:`(${A.y}+${B.y})/2 = ${my}`},
+          {t:'Midpoint',c:`M = (${mx}, ${my})`},
+        ])}
       </div>
     </div>`);
 }
 
-// ─── BEARINGS ─────────────────────────────────────────────────────────────────
-function renderBearings() {
-  const {A,B} = state.bear;
-  const W=400,H=400,range=10;
-  const svA=toSVG(A.x,A.y,W,H,range), svB=toSVG(B.x,B.y,W,H,range);
-  const svN=toSVG(A.x,A.y+3,W,H,range);
+// ═══════════════════════════════════════════════════════════════════
+// BEARINGS
+// ═══════════════════════════════════════════════════════════════════
+function renderBearings(){
+  const {A,B}=S.bear;
+  const svA=toSVG(A.x,A.y), svB=toSVG(B.x,B.y);
+  const svN=toSVG(A.x,A.y+3.5);
   const dx=B.x-A.x, dy=B.y-A.y;
-  const dist=round2(Math.sqrt(dx*dx+dy*dy));
-  let angle=Math.atan2(dx,dy)*(180/Math.PI);
-  if(angle<0) angle+=360;
-  const bearing=Math.round(angle);
-  const bearStr=bearing.toString().padStart(3,'0');
-  const arcR=45, startA=-90, endA=startA+bearing;
-  const s0=startA*Math.PI/180, s1=endA*Math.PI/180;
+  const dist=r2(Math.sqrt(dx*dx+dy*dy));
+  let ang=Math.atan2(dx,dy)*180/Math.PI; if(ang<0)ang+=360;
+  const bearing=Math.round(ang), bs=bearing.toString().padStart(3,'0');
+  const arcR=50, s0=(-90)*Math.PI/180, s1=(-90+bearing)*Math.PI/180;
   const ax1=svA.sx+arcR*Math.cos(s0), ay1=svA.sy+arcR*Math.sin(s0);
   const ax2=svA.sx+arcR*Math.cos(s1), ay2=svA.sy+arcR*Math.sin(s1);
-  const lg=bearing>180?1:0;
-  const steps=[
-    {title:'Mark origin A and target B', content:`A = (${A.x}, ${A.y}), B = (${B.x}, ${B.y})`},
-    {title:'Draw North line upward from A', content:'Bearings always measured from North (000°)'},
-    {title:'Measure clockwise to line AB', content:`Δx = ${dx}, Δy = ${dy} → atan2(${dx},${dy})`},
-    {title:'Three-figure bearing', content:`Bearing from A to B = ${bearStr}°`},
-  ];
   const inner=`
-    <line x1="${svA.sx}" y1="${svA.sy}" x2="${svN.sx}" y2="${svN.sy}" stroke="#475569" stroke-width="2" stroke-dasharray="4,4"/>
+    <line x1="${svA.sx}" y1="${svA.sy}" x2="${svN.sx}" y2="${svN.sy}" stroke="#475569" stroke-width="2" stroke-dasharray="5,4"/>
     <text x="${svN.sx}" y="${svN.sy-8}" text-anchor="middle" fill="#64748b" font-size="13" font-weight="700" font-family="Space Grotesk">N</text>
     <line x1="${svA.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svB.sy}" stroke="#818cf8" stroke-width="2.5"/>
-    <path d="M ${ax1} ${ay1} A ${arcR} ${arcR} 0 ${lg} 1 ${ax2} ${ay2}" fill="none" stroke="#fbbf24" stroke-width="2"/>
-    <text x="${svA.sx+52}" y="${svA.sy-12}" fill="#fbbf24" font-size="13" font-weight="700" font-family="Space Grotesk">${bearing}°</text>
-    ${draggablePoint(svA.sx,svA.sy,'#f43f5e','A','bear-A',` (${A.x},${A.y})`)}
-    ${draggablePoint(svB.sx,svB.sy,'#818cf8','B','bear-B',` (${B.x},${B.y})`)}`;
-  return pageWrap('Bearings','🧭','Drag points to find the bearing from A to B, measured clockwise from North.',`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-      <div>${svgWrap(inner,W,H,'svg-bear')}</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${formulaBox('Bearing A → B','Measured clockwise from North',bearStr+'°','indigo')}
-        ${formulaBox('Distance','d = √(Δx² + Δy²)',dist+' units','emerald')}
-        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(99,102,241,0.1);border-radius:12px;padding:16px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:8px">Compass Points</div>
-          <div style="font-size:13px;color:#94a3b8;line-height:1.8">N = 000° &nbsp;|&nbsp; E = 090°<br>S = 180° &nbsp;|&nbsp; W = 270°</div>
+    <path d="M ${ax1} ${ay1} A ${arcR} ${arcR} 0 ${bearing>180?1:0} 1 ${ax2} ${ay2}" fill="none" stroke="#fbbf24" stroke-width="2.5"/>
+    <text x="${svA.sx+58}" y="${svA.sy-14}" fill="#fbbf24" font-size="14" font-weight="700" font-family="Space Grotesk">${bs}°</text>
+    ${dragDot(svA.sx,svA.sy,'#f43f5e',`A(${A.x},${A.y})`,'bear-A')}
+    ${dragDot(svB.sx,svB.sy,'#818cf8',`B(${B.x},${B.y})`,'bear-B')}`;
+  setTimeout(()=>attachDrag('svg-bear',(id,x,y)=>{
+    if(id==='bear-A') S.bear.A={x,y}; else S.bear.B={x,y}; rerender();
+  }),30);
+  return pageWrap('Bearings','🧭','Drag A (origin) and B (target) to see the bearing update.',`
+    <div class="two-col">
+      ${makeSVG(inner,'svg-bear')}
+      <div class="ctrl-col">
+        ${fbox('Bearing A → B','Clockwise from North',bs+'°','indigo')}
+        ${fbox('Distance','d = √(Δx² + Δy²)',dist+' units','emerald')}
+        <div class="info-box">
+          <div class="info-label">Compass Reference</div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.9">N = 000° &nbsp;E = 090°<br>S = 180° &nbsp;W = 270°</div>
         </div>
-        ${stepByStep(steps)}
+        ${steps([
+          {t:'Mark A and B',c:`A=(${A.x},${A.y}), B=(${B.x},${B.y})`},
+          {t:'Draw North from A',c:'Always measure from North (000°)'},
+          {t:'Measure clockwise',c:`Δx=${dx}, Δy=${dy}`},
+          {t:'Three-figure bearing',c:`${bs}°`},
+        ])}
       </div>
     </div>`);
 }
 
-// ─── AREA ─────────────────────────────────────────────────────────────────────
-function renderArea() {
-  const s=state.area;
-  const W=400,H=400,range=10;
-  let svgInner='', formulae='';
-
+// ═══════════════════════════════════════════════════════════════════
+// AREA
+// ═══════════════════════════════════════════════════════════════════
+function renderArea(){
+  const s=S.area;
+  let inner='', right='';
   if(s.shape==='triangle'){
     const {triA:A,triB:B,triC:C}=s;
-    const svA=toSVG(A.x,A.y,W,H,range),svB=toSVG(B.x,B.y,W,H,range),svC=toSVG(C.x,C.y,W,H,range);
-    const area=Math.abs(A.x*(B.y-C.y)+B.x*(C.y-A.y)+C.x*(A.y-B.y))/2;
-    svgInner=`
-      <polygon points="${svA.sx},${svA.sy} ${svB.sx},${svB.sy} ${svC.sx},${svC.sy}" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
-      ${draggablePoint(svA.sx,svA.sy,'#818cf8','A','area-triA',` (${A.x},${A.y})`)}
-      ${draggablePoint(svB.sx,svB.sy,'#34d399','B','area-triB',` (${B.x},${B.y})`)}
-      ${draggablePoint(svC.sx,svC.sy,'#f59e0b','C','area-triC',` (${C.x},${C.y})`)}`;
-    formulae=formulaBox('Triangle Area (Shoelace)','A = ½|x₁(y₂−y₃)+x₂(y₃−y₁)+x₃(y₁−y₂)|',area+' sq units','amber');
-  } else if(s.shape==='rectangle'){
+    const svA=toSVG(A.x,A.y),svB=toSVG(B.x,B.y),svC=toSVG(C.x,C.y);
+    const area=r2(Math.abs(A.x*(B.y-C.y)+B.x*(C.y-A.y)+C.x*(A.y-B.y))/2);
+    inner=`<polygon points="${svA.sx},${svA.sy} ${svB.sx},${svB.sy} ${svC.sx},${svC.sy}" fill="#f59e0b" fill-opacity=".12" stroke="#f59e0b" stroke-width="2"/>
+      ${dragDot(svA.sx,svA.sy,'#818cf8',`A(${A.x},${A.y})`,'area-tA')}
+      ${dragDot(svB.sx,svB.sy,'#34d399',`B(${B.x},${B.y})`,'area-tB')}
+      ${dragDot(svC.sx,svC.sy,'#f59e0b',`C(${C.x},${C.y})`,'area-tC')}`;
+    right=fbox('Triangle Area (Shoelace)','½|x₁(y₂−y₃)+x₂(y₃−y₁)+x₃(y₁−y₂)|',area+' sq units','amber')+
+      steps([
+        {t:'Label vertices',c:`A(${A.x},${A.y}), B(${B.x},${B.y}), C(${C.x},${C.y})`},
+        {t:'Apply Shoelace',c:'Area = ½|x₁(y₂−y₃)+x₂(y₃−y₁)+x₃(y₁−y₂)|'},
+        {t:'Substitute',c:`= ½|${A.x}(${B.y-C.y})+${B.x}(${C.y-A.y})+${C.x}(${A.y-B.y})|`},
+        {t:'Result',c:`Area = ${area} square units`},
+      ]);
+    setTimeout(()=>attachDrag('svg-area',(id,x,y)=>{
+      if(id==='area-tA') s.triA={x,y};
+      else if(id==='area-tB') s.triB={x,y};
+      else if(id==='area-tC') s.triC={x,y};
+      rerender();
+    }),30);
+  } else {
     const {rectA:A,rectB:B}=s;
-    const svA=toSVG(A.x,A.y,W,H,range),svB=toSVG(B.x,B.y,W,H,range);
+    const svA=toSVG(A.x,A.y),svB=toSVG(B.x,B.y);
     const w=Math.abs(B.x-A.x),h=Math.abs(B.y-A.y),area=w*h;
     const minX=Math.min(svA.sx,svB.sx),minY=Math.min(svA.sy,svB.sy);
-    svgInner=`
-      <rect x="${minX}" y="${minY}" width="${Math.abs(svB.sx-svA.sx)}" height="${Math.abs(svB.sy-svA.sy)}" fill="#818cf8" fill-opacity="0.12" stroke="#818cf8" stroke-width="2"/>
-      <text x="${minX+Math.abs(svB.sx-svA.sx)/2}" y="${Math.max(svA.sy,svB.sy)+18}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">w=${w}</text>
+    inner=`<rect x="${minX}" y="${minY}" width="${Math.abs(svB.sx-svA.sx)}" height="${Math.abs(svB.sy-svA.sy)}" fill="#818cf8" fill-opacity=".12" stroke="#818cf8" stroke-width="2"/>
+      <text x="${minX+Math.abs(svB.sx-svA.sx)/2}" y="${Math.max(svA.sy,svB.sy)+16}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">w=${w}</text>
       <text x="${Math.max(svA.sx,svB.sx)+14}" y="${minY+Math.abs(svB.sy-svA.sy)/2+4}" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">h=${h}</text>
-      ${draggablePoint(svA.sx,svA.sy,'#818cf8','A','area-rectA',` (${A.x},${A.y})`)}
-      ${draggablePoint(svB.sx,svB.sy,'#34d399','B','area-rectB',` (${B.x},${B.y})`)}`;
-    formulae=formulaBox('Rectangle Area','A = width × height',area+' sq units','indigo')+
+      ${dragDot(svA.sx,svA.sy,'#818cf8',`A(${A.x},${A.y})`,'area-rA')}
+      ${dragDot(svB.sx,svB.sy,'#34d399',`B(${B.x},${B.y})`,'area-rB')}`;
+    right=fbox('Rectangle Area','A = width × height',area+' sq units','indigo')+
       `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
-        ${formulaBox('Width','|x₂−x₁|',w,'amber')}${formulaBox('Height','|y₂−y₁|',h,'emerald')}
-      </div>`;
+        ${fbox('Width','|x₂−x₁|',w,'amber')}${fbox('Height','|y₂−y₁|',h,'emerald')}</div>`+
+      steps([
+        {t:'Corners',c:`A(${A.x},${A.y}), B(${B.x},${B.y})`},
+        {t:'Width',c:`|${B.x}−${A.x}| = ${w}`},
+        {t:'Height',c:`|${B.y}−${A.y}| = ${h}`},
+        {t:'Area',c:`${w} × ${h} = ${area} sq units`},
+      ]);
+    setTimeout(()=>attachDrag('svg-area',(id,x,y)=>{
+      if(id==='area-rA') s.rectA={x,y}; else s.rectB={x,y}; rerender();
+    }),30);
   }
-
-  const shapeBtns=['triangle','rectangle'].map(sh=>`
-    <button class="tab-btn ${s.shape===sh?'active':''}" onclick="state.area.shape='${sh}';render()">${sh.charAt(0).toUpperCase()+sh.slice(1)}</button>`).join('');
-
-  return pageWrap('Area of Shapes','📐','Drag the vertices to reshape and recalculate.',`
-    <div style="display:flex;gap:6px;margin-bottom:20px;background:rgba(15,23,42,0.6);padding:6px;border-radius:10px;border:1px solid rgba(99,102,241,0.15);width:fit-content">${shapeBtns}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-      <div>${svgWrap(svgInner,W,H,'svg-area')}</div>
-      <div style="display:flex;flex-direction:column;gap:12px">${formulae}</div>
-    </div>`);
+  return pageWrap('Area of Shapes','📐','Drag vertices to reshape and recalculate.',`
+    ${tabs([['triangle','Triangle'],['rectangle','Rectangle']],s.shape,"S.area.shape=__V__;rerender()")}
+    <div class="two-col">${makeSVG(inner,'svg-area')}<div class="ctrl-col">${right}</div></div>`);
 }
 
-// ─── PRISMS ─────────────────────────────────────────────────────────────────
-function renderPrisms() {
-  const {base,height,depth}=state.prism;
-  const triArea=(base*height)/2;
-  const vol=triArea*depth;
-  const hyp=Math.sqrt(base*base+height*height);
-  const sa=round2(2*triArea+base*depth+height*depth+hyp*depth);
-  const scale=15,cx=200,cy=180;
-  const bw=base*scale,th=height*scale,doff=depth*8;
-  const fTop={x:cx,y:cy-th},fL={x:cx-bw/2,y:cy},fR={x:cx+bw/2,y:cy};
-  const bTop={x:fTop.x+doff,y:fTop.y-doff*0.5},bL={x:fL.x+doff,y:fL.y-doff*0.5},bR={x:fR.x+doff,y:fR.y-doff*0.5};
-  const steps=[
-    {title:'Find area of triangular base',content:`A = ½ × ${base} × ${height} = ${triArea}`},
-    {title:'Multiply by depth',content:`Volume = ${triArea} × ${depth} = ${vol} cubic units`},
-    {title:'Surface area',content:`SA = 2 triangles + 3 rectangles = ${sa} sq units`},
-  ];
-  const prismSVG=`<svg width="400" height="300" viewBox="0 0 400 300" style="background:#0a0f1a;border-radius:12px;display:block;max-width:100%">
-    <defs><linearGradient id="pg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.4"/>
-      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.2"/>
-    </linearGradient></defs>
-    <polygon points="${fTop.x},${fTop.y} ${fL.x},${fL.y} ${fR.x},${fR.y}" fill="url(#pg)" stroke="#818cf8" stroke-width="2"/>
-    <polygon points="${bTop.x},${bTop.y} ${bL.x},${bL.y} ${bR.x},${bR.y}" fill="#4f46e5" fill-opacity="0.25" stroke="#818cf8" stroke-width="2" stroke-dasharray="4,4"/>
-    <line x1="${fTop.x}" y1="${fTop.y}" x2="${bTop.x}" y2="${bTop.y}" stroke="#818cf8" stroke-width="2"/>
+// ═══════════════════════════════════════════════════════════════════
+// PRISMS
+// ═══════════════════════════════════════════════════════════════════
+function renderPrisms(){
+  const {base:b,height:h,depth:d}=S.prism;
+  const triA=r2((b*h)/2), vol=r2(triA*d);
+  const hyp=r2(Math.sqrt(b*b+h*h));
+  const sa=r2(2*triA+b*d+h*d+hyp*d);
+  const sc=15,pcx=200,pcy=185,bw=b*sc,th=h*sc,doff=d*9;
+  const fT={x:pcx,y:pcy-th},fL={x:pcx-bw/2,y:pcy},fR={x:pcx+bw/2,y:pcy};
+  const bT={x:fT.x+doff,y:fT.y-doff*.45},bL={x:fL.x+doff,y:fL.y-doff*.45},bR={x:fR.x+doff,y:fR.y-doff*.45};
+  const prismSVG=`<svg width="${W}" height="320" viewBox="0 0 ${W} 320" style="background:#060b14;border-radius:12px;display:block;max-width:100%">
+    <defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity=".2"/></linearGradient></defs>
+    <polygon points="${fT.x},${fT.y} ${fL.x},${fL.y} ${fR.x},${fR.y}" fill="url(#pg)" stroke="#818cf8" stroke-width="2"/>
+    <polygon points="${bT.x},${bT.y} ${bL.x},${bL.y} ${bR.x},${bR.y}" fill="#4f46e5" fill-opacity=".2" stroke="#818cf8" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <line x1="${fT.x}" y1="${fT.y}" x2="${bT.x}" y2="${bT.y}" stroke="#818cf8" stroke-width="2"/>
     <line x1="${fL.x}" y1="${fL.y}" x2="${bL.x}" y2="${bL.y}" stroke="#818cf8" stroke-width="2"/>
     <line x1="${fR.x}" y1="${fR.y}" x2="${bR.x}" y2="${bR.y}" stroke="#818cf8" stroke-width="2"/>
-    <text x="${cx}" y="${cy+20}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">base = ${base}</text>
-    <text x="${fR.x-8}" y="${(fR.y+fTop.y)/2}" fill="#10b981" font-size="11" font-weight="600" font-family="Space Grotesk">h = ${height}</text>
-    <text x="${(fL.x+bL.x)/2-10}" y="${(fL.y+bL.y)/2+5}" fill="#f43f5e" font-size="11" font-weight="600" font-family="Space Grotesk">depth = ${depth}</text>
+    <text x="${pcx}" y="${pcy+18}" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="600" font-family="Space Grotesk">base=${b}</text>
+    <text x="${fR.x+10}" y="${(fR.y+fT.y)/2}" fill="#10b981" font-size="12" font-weight="600" font-family="Space Grotesk">h=${h}</text>
+    <text x="${(fL.x+bL.x)/2-8}" y="${(fL.y+bL.y)/2-4}" fill="#f43f5e" font-size="12" font-weight="600" font-family="Space Grotesk">d=${d}</text>
   </svg>`;
-  return pageWrap('3D Prisms','📦','Adjust the sliders to change dimensions and recalculate.',`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-      <div>${prismSVG}</div>
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="card" style="padding:20px">
-          ${slider('Triangle Base','#f59e0b',base,2,8,1,'prism-base')}
-          ${slider('Triangle Height','#10b981',height,2,8,1,'prism-height')}
-          ${slider('Prism Depth','#f43f5e',depth,2,10,1,'prism-depth')}
+  return pageWrap('3D Prisms','📦','Adjust sliders or enter values to recalculate.',`
+    <div class="two-col">
+      ${prismSVG}
+      <div class="ctrl-col">
+        <div class="card">
+          ${SI('Triangle Base','#f59e0b',b,1,10,1,'prism','base')}
+          ${SI('Triangle Height','#10b981',h,1,10,1,'prism','height')}
+          ${SI('Prism Depth','#f43f5e',d,1,12,1,'prism','depth')}
         </div>
-        ${formulaBox('Volume','V = ½ × base × height × depth',vol+' cubic units','indigo')}
-        ${formulaBox('Surface Area','SA = 2 triangles + 3 rectangles',sa+' sq units','emerald')}
-        ${stepByStep(steps)}
+        ${fbox('Volume','V = ½ × base × height × depth',vol+' cubic units','indigo')}
+        ${fbox('Surface Area','SA = 2 triangles + 3 rectangles',sa+' sq units','emerald')}
+        ${steps([
+          {t:'Triangle base area',c:`½ × ${b} × ${h} = ${triA}`},
+          {t:'Volume',c:`${triA} × ${d} = ${vol} cubic units`},
+          {t:'Three rectangles',c:`${b}×${d} + ${h}×${d} + ${hyp}×${d} = ${r2(b*d+h*d+hyp*d)}`},
+          {t:'Surface area',c:`2×${triA} + ${r2(b*d+h*d+hyp*d)} = ${sa} sq units`},
+        ])}
       </div>
     </div>`);
 }
 
-function slider(label, color, val, min, max, step, id) {
-  return `<div class="slider-wrap">
-    <div class="slider-label">
-      <span style="font-size:13px;font-weight:600;color:${color}">${label}</span>
-      <span class="mono" style="font-size:13px;color:#f1f5f9">${val} units</span>
-    </div>
-    <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" oninput="handleSlider('${id}',this.value)">
-  </div>`;
-}
-
-function handleSlider(id, val) {
-  val = parseFloat(val);
-  if(id==='prism-base') state.prism.base=val;
-  if(id==='prism-height') state.prism.height=val;
-  if(id==='prism-depth') state.prism.depth=val;
-  if(id==='linear-m') state.linear.m=val;
-  if(id==='linear-c') state.linear.c=val;
-  if(id==='para-b') state.para.b=val;
-  if(id==='para-h') state.para.h=val;
-  if(id==='para-a') state.para.a=val;
-  if(id==='unit-val') state.unit.value=val;
-  if(id==='trans-tx') state.trans.tx=val;
-  if(id==='trans-ty') state.trans.ty=val;
-  if(id==='trans-angle') state.trans.angle=val;
-  if(id==='trans-sf') state.trans.sf=val;
-  render();
-}
-window.handleSlider = handleSlider;
-
-// ─── LINEAR EQUATIONS ────────────────────────────────────────────────────────
-function renderLinear() {
-  const {m,c}=state.linear;
-  const W=400,H=400,range=10;
-  const cell=W/(range*2);
-  // Compute line endpoints
-  const x1=-range,y1=m*x1+c;
-  const x2=range,y2=m*x2+c;
-  const sv1=toSVG(x1,y1,W,H,range),sv2=toSVG(x2,y2,W,H,range);
-  const yInt=toSVG(0,c,W,H,range);
+// ═══════════════════════════════════════════════════════════════════
+// LINEAR
+// ═══════════════════════════════════════════════════════════════════
+function renderLinear(){
+  const {m,c}=S.linear;
+  // Clamp line to SVG bounds
+  function lineY(x){ return m*x+c; }
+  let pts=[];
+  for(let x=-RANGE;x<=RANGE;x+=0.5){
+    const y=lineY(x);
+    if(y>=-RANGE&&y<=RANGE) pts.push(toSVG(x,y));
+  }
+  const pathD=pts.length?'M'+pts.map(p=>`${p.sx},${p.sy}`).join('L'):'';
+  const yIntSV=toSVG(0,c);
+  const xInt=m!==0?r2(-c/m):null;
   const inner=`
-    <line x1="${sv1.sx}" y1="${sv1.sy}" x2="${sv2.sx}" y2="${sv2.sy}" stroke="#818cf8" stroke-width="2.5"/>
-    <circle cx="${yInt.sx}" cy="${yInt.sy}" r="6" fill="#fbbf24" stroke="#fff" stroke-width="2"/>
-    <text x="${yInt.sx+10}" y="${yInt.sy-10}" fill="#fbbf24" font-size="12" font-weight="600" font-family="Space Grotesk">y-int = ${c}</text>`;
-  return pageWrap('Linear Equations','📉',`Adjust m and c to see how y = mx + c changes.`,`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-      <div>${svgWrap(inner,W,H,'svg-linear')}</div>
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="card" style="padding:20px">
-          ${slider('Gradient (m)','#818cf8',m,-5,5,0.5,'linear-m')}
-          ${slider('y-intercept (c)','#fbbf24',c,-8,8,1,'linear-c')}
+    ${pathD?`<path d="${pathD}" fill="none" stroke="#818cf8" stroke-width="2.5" stroke-linecap="round"/>`:''}
+    <circle cx="${yIntSV.sx}" cy="${yIntSV.sy}" r="7" fill="#fbbf24" stroke="#fff" stroke-width="2"/>
+    <text x="${yIntSV.sx+12}" y="${yIntSV.sy-10}" fill="#fbbf24" font-size="11" font-weight="600" font-family="Space Grotesk">c=${c}</text>`;
+  return pageWrap('Linear Equations','📉','Adjust m and c to change the line y = mx + c.',`
+    <div class="two-col">
+      ${makeSVG(inner,'svg-lin')}
+      <div class="ctrl-col">
+        <div class="card">
+          ${SI('Gradient (m)','#818cf8',m,-6,6,0.5,'linear','m')}
+          ${SI('y-intercept (c)','#fbbf24',c,-9,9,1,'linear','c')}
         </div>
-        ${formulaBox('Equation','y = mx + c',`y = ${m}x + (${c})`,'indigo')}
-        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(99,102,241,0.1);border-radius:12px;padding:16px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:8px">Key Facts</div>
+        ${fbox('Equation','y = mx + c',`y = ${m}x + (${c})`,'indigo')}
+        ${fbox('y-intercept','Where line crosses y-axis','(0, '+c+')','amber')}
+        ${xInt!==null?fbox('x-intercept','Where line crosses x-axis (y=0)','('+xInt+', 0)','emerald'):''}
+        <div class="info-box">
+          <div class="info-label">Key Facts</div>
           <div style="font-size:13px;color:#94a3b8;line-height:1.8">
-            • m = ${m} → line slopes ${m>0?'upward':'downward'}<br>
-            • c = ${c} → crosses y-axis at (0, ${c})<br>
-            • ${m===0?'Horizontal line':'Not horizontal'}
+            m = ${m} → ${m>0?'slopes up ↗':m<0?'slopes down ↘':'horizontal ↔'}<br>
+            c = ${c} → crosses y-axis at ${c}<br>
+            ${Math.abs(m)>1?'Steep line':'${Math.abs(m)<1?"Shallow line":"45° line"}'}
           </div>
         </div>
       </div>
     </div>`);
 }
 
-// ─── UNIT CONVERTER ──────────────────────────────────────────────────────────
-function renderUnits() {
-  const {value,dir}=state.unit;
-  const km=round2(value*1.60934), mi=round2(value/1.60934);
+// ═══════════════════════════════════════════════════════════════════
+// UNITS
+// ═══════════════════════════════════════════════════════════════════
+function renderUnits(){
+  const {value:v,dir}=S.unit;
+  const km=r2(v*1.60934), mi=r2(v/1.60934);
   return pageWrap('Miles ↔ Kilometres','↔️','Convert between imperial and metric distance.',`
-    <div style="max-width:500px">
-      <div class="card" style="padding:24px;margin-bottom:20px">
-        ${slider('Value to convert','#818cf8',value,1,200,1,'unit-val')}
-        <div style="display:flex;gap:8px;margin-top:12px">
-          <button class="tab-btn ${dir==='mi2km'?'active':''}" onclick="state.unit.dir='mi2km';render()">Miles → Km</button>
-          <button class="tab-btn ${dir==='km2mi'?'active':''}" onclick="state.unit.dir='km2mi';render()">Km → Miles</button>
+    <div style="max-width:520px">
+      <div class="card" style="margin-bottom:20px">
+        ${SI('Value','#818cf8',v,1,500,1,'unit','value')}
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-tab${dir==='mi2km'?' active':''}" onclick="S.unit.dir='mi2km';rerender()">Miles → Km</button>
+          <button class="btn btn-tab${dir==='km2mi'?' active':''}" onclick="S.unit.dir='km2mi';rerender()">Km → Miles</button>
         </div>
       </div>
       ${dir==='mi2km'
-        ? formulaBox('Miles to Kilometres',`${value} miles × 1.60934`,`= ${km} km`,'indigo')
-        : formulaBox('Kilometres to Miles',`${value} km ÷ 1.60934`,`= ${mi} miles`,'emerald')}
-      <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(99,102,241,0.1);border-radius:12px;padding:16px;margin-top:16px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:8px">Quick Reference</div>
-        <div style="font-size:13px;color:#94a3b8;line-height:1.8">
-          1 mile = 1.60934 km<br>
-          1 km = 0.62137 miles<br>
-          5 miles ≈ 8 km<br>
-          Marathon = 26.2 miles = 42.2 km
+        ? fbox('Miles to Kilometres',v+' × 1.60934',km+' km','indigo')
+        : fbox('Kilometres to Miles',v+' ÷ 1.60934',mi+' miles','emerald')}
+      <div class="info-box" style="margin-top:16px">
+        <div class="info-label">Quick Reference</div>
+        <div style="font-size:13px;color:#94a3b8;line-height:1.9">
+          1 mile = 1.60934 km &nbsp;|&nbsp; 1 km = 0.621 miles<br>
+          5 miles ≈ 8 km &nbsp;|&nbsp; Marathon = 26.2 mi = 42.2 km
         </div>
       </div>
     </div>`);
 }
 
-// ─── PARALLELOGRAM / TRAPEZIUM ───────────────────────────────────────────────
-function renderParallelogram() {
-  const {type,b,h,a}=state.para;
-  const W=360,H=280;
-  let area,formula,svgShape;
+// ═══════════════════════════════════════════════════════════════════
+// PARALLELOGRAM & TRAPEZIUM
+// ═══════════════════════════════════════════════════════════════════
+function renderParallelogram(){
+  const {type,b,h,a}=S.para;
+  const svgW=380, svgH=260;
+  let shape='', area, formula;
+  const sc=22;
   if(type==='parallelogram'){
-    area=b*h;
-    formula='A = base × height';
-    const ox=80,oy=180,slant=40;
-    svgShape=`<polygon points="${ox},${oy} ${ox+b*25},${oy} ${ox+b*25+slant},${oy-h*25} ${ox+slant},${oy-h*25}" fill="rgba(99,102,241,0.15)" stroke="#818cf8" stroke-width="2"/>
-      <line x1="${ox}" y1="${oy+15}" x2="${ox+b*25}" y2="${oy+15}" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr)"/>
-      <text x="${ox+b*12}" y="${oy+28}" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="600" font-family="Space Grotesk">base = ${b}</text>
-      <line x1="${ox+b*25+slant+15}" y1="${oy}" x2="${ox+b*25+slant+15}" y2="${oy-h*25}" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,3"/>
-      <text x="${ox+b*25+slant+28}" y="${oy-h*12}" fill="#10b981" font-size="12" font-weight="600" font-family="Space Grotesk">h=${h}</text>`;
+    area=r2(b*h); formula='A = base × height';
+    const ox=40,oy=200,slant=Math.min(30,h*8);
+    const pts=`${ox},${oy} ${ox+b*sc},${oy} ${ox+b*sc+slant},${oy-h*sc} ${ox+slant},${oy-h*sc}`;
+    shape=`<polygon points="${pts}" fill="rgba(99,102,241,.15)" stroke="#818cf8" stroke-width="2"/>
+      <line x1="${ox}" y1="${oy+14}" x2="${ox+b*sc}" y2="${oy+14}" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="${ox+b*sc/2}" y="${oy+26}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">base=${b}</text>
+      <line x1="${ox+b*sc+slant+12}" y1="${oy}" x2="${ox+b*sc+slant+12}" y2="${oy-h*sc}" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="${ox+b*sc+slant+24}" y="${oy-h*sc/2+4}" fill="#10b981" font-size="11" font-weight="600" font-family="Space Grotesk">h=${h}</text>`;
   } else {
-    area=0.5*(b+a)*h;
-    formula='A = ½(a + b) × h';
-    const ox=60,oy=180,offset=30;
-    svgShape=`<polygon points="${ox+offset},${oy-h*25} ${ox+offset+a*25},${oy-h*25} ${ox+b*25},${oy} ${ox},${oy}" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="2"/>
-      <line x1="${ox}" y1="${oy+15}" x2="${ox+b*25}" y2="${oy+15}" stroke="#f59e0b" stroke-width="1.5"/>
-      <text x="${ox+b*12}" y="${oy+28}" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="600" font-family="Space Grotesk">b = ${b}</text>
-      <line x1="${ox+offset}" y1="${oy-h*25-15}" x2="${ox+offset+a*25}" y2="${oy-h*25-15}" stroke="#818cf8" stroke-width="1.5"/>
-      <text x="${ox+offset+a*12}" y="${oy-h*25-22}" text-anchor="middle" fill="#818cf8" font-size="12" font-weight="600" font-family="Space Grotesk">a = ${a}</text>`;
+    area=r2(0.5*(b+a)*h); formula='A = ½(a+b) × h';
+    const ox=30,oy=200,off=Math.min(25,a*sc/3);
+    const pts=`${ox},${oy} ${ox+b*sc},${oy} ${ox+b*sc-off},${oy-h*sc} ${ox+off},${oy-h*sc}`;
+    shape=`<polygon points="${pts}" fill="rgba(244,63,94,.15)" stroke="#f43f5e" stroke-width="2"/>
+      <line x1="${ox}" y1="${oy+14}" x2="${ox+b*sc}" y2="${oy+14}" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="${ox+b*sc/2}" y="${oy+26}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">b=${b}</text>
+      <line x1="${ox+off}" y1="${oy-h*sc-14}" x2="${ox+b*sc-off}" y2="${oy-h*sc-14}" stroke="#818cf8" stroke-width="1.5"/>
+      <text x="${ox+(b*sc)/2}" y="${oy-h*sc-20}" text-anchor="middle" fill="#818cf8" font-size="11" font-weight="600" font-family="Space Grotesk">a=${a}</text>
+      <line x1="${ox+b*sc+8}" y1="${oy}" x2="${ox+b*sc+8}" y2="${oy-h*sc}" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="${ox+b*sc+20}" y="${oy-h*sc/2+4}" fill="#10b981" font-size="11" font-weight="600" font-family="Space Grotesk">h=${h}</text>`;
   }
   const color=type==='parallelogram'?'indigo':'rose';
-  const tabs=['parallelogram','trapezium'].map(t=>`
-    <button class="tab-btn ${type===t?'active':''}" onclick="state.para.type='${t}';render()">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('');
-  return pageWrap('Parallelogram & Trapezium','⬡','Adjust dimensions to compute the area.',`
-    <div style="display:flex;gap:6px;margin-bottom:20px;background:rgba(15,23,42,0.6);padding:6px;border-radius:10px;border:1px solid rgba(99,102,241,0.15);width:fit-content">${tabs}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="background:#0a0f1a;border-radius:12px;display:block;max-width:100%">
-        ${svgShape}
-      </svg>
-      <div style="display:flex;flex-direction:column;gap:14px">
-        <div class="card" style="padding:20px">
-          ${slider('Base (b)','#f59e0b',b,2,10,1,'para-b')}
-          ${slider('Height (h)','#10b981',h,2,8,1,'para-h')}
-          ${type==='trapezium'?slider('Top (a)','#818cf8',a,1,8,1,'para-a'):''}
+  return pageWrap('Parallelogram & Trapezium','⬡','Adjust dimensions to compute area.',`
+    ${tabs([['parallelogram','Parallelogram'],['trapezium','Trapezium']],type,"S.para.type=__V__;rerender()")}
+    <div class="two-col">
+      <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="background:#060b14;border-radius:12px;display:block;max-width:100%">${shape}</svg>
+      <div class="ctrl-col">
+        <div class="card">
+          ${SI('Base (b)','#f59e0b',b,1,12,1,'para','b')}
+          ${SI('Height (h)','#10b981',h,1,8,1,'para','h')}
+          ${type==='trapezium'?SI('Top (a)','#818cf8',a,1,10,1,'para','a'):''}
         </div>
-        ${formulaBox(type.charAt(0).toUpperCase()+type.slice(1)+' Area',formula,round2(area)+' sq units',color)}
+        ${fbox(type.charAt(0).toUpperCase()+type.slice(1)+' Area',formula,area+' sq units',color)}
+        ${steps(type==='parallelogram'?[
+          {t:'Formula',c:'A = base × height'},
+          {t:'Substitute',c:`A = ${b} × ${h}`},
+          {t:'Result',c:`A = ${area} sq units`},
+        ]:[
+          {t:'Formula',c:'A = ½(a+b) × h'},
+          {t:'Substitute',c:`A = ½(${a}+${b}) × ${h}`},
+          {t:'Simplify',c:`A = ½ × ${a+b} × ${h}`},
+          {t:'Result',c:`A = ${area} sq units`},
+        ])}
       </div>
     </div>`);
 }
 
-// ─── TRANSFORMATIONS ─────────────────────────────────────────────────────────
-function renderTransformations() {
-  const {type,shape,tx,ty,rx,ry,angle,sx,sy,sf}=state.trans;
-  const W=400,H=400,range=10;
-  let transformed=[];
+// ═══════════════════════════════════════════════════════════════════
+// TRANSFORMATIONS
+// ═══════════════════════════════════════════════════════════════════
+function renderTransformations(){
+  const {type,shape,tx,ty,angle,cx:rcx,cy:rcy,sf}=S.trans;
   const rad=angle*Math.PI/180;
-  if(type==='translate') transformed=shape.map(p=>({x:p.x+tx,y:p.y+ty}));
+  let transformed=[];
+  if(type==='translate') transformed=shape.map(p=>({x:r1(p.x+tx),y:r1(p.y+ty)}));
   else if(type==='reflect-x') transformed=shape.map(p=>({x:p.x,y:-p.y}));
   else if(type==='reflect-y') transformed=shape.map(p=>({x:-p.x,y:p.y}));
   else if(type==='rotate') transformed=shape.map(p=>({
-    x:round1((p.x-sx)*Math.cos(rad)-(p.y-sy)*Math.sin(rad)+sx),
-    y:round1((p.x-sx)*Math.sin(rad)+(p.y-sy)*Math.cos(rad)+sy)
+    x:r1((p.x-rcx)*Math.cos(rad)-(p.y-rcy)*Math.sin(rad)+rcx),
+    y:r1((p.x-rcx)*Math.sin(rad)+(p.y-rcy)*Math.cos(rad)+rcy),
   }));
   else if(type==='enlarge') transformed=shape.map(p=>({
-    x:round1(sx+(p.x-sx)*sf), y:round1(sy+(p.y-sy)*sf)
+    x:r1(rcx+(p.x-rcx)*sf), y:r1(rcy+(p.y-rcy)*sf),
   }));
-  const pts=shape.map(p=>{const s=toSVG(p.x,p.y,W,H,range);return `${s.sx},${s.sy}`;}).join(' ');
-  const tpts=transformed.map(p=>{const s=toSVG(p.x,p.y,W,H,range);return `${s.sx},${s.sy}`;}).join(' ');
+  const pts=shape.map(p=>{const s=toSVG(p.x,p.y);return `${s.sx},${s.sy}`;}).join(' ');
+  const tpts=transformed.map(p=>{const s=toSVG(p.x,p.y);return `${s.sx},${s.sy}`;}).join(' ');
   const inner=`
-    <polygon points="${pts}" fill="rgba(99,102,241,0.15)" stroke="#818cf8" stroke-width="2" stroke-dasharray="5,3"/>
-    <polygon points="${tpts}" fill="rgba(16,185,129,0.2)" stroke="#34d399" stroke-width="2.5"/>
-    <text x="20" y="20" fill="#818cf8" font-size="11" font-weight="600" font-family="Space Grotesk">Original</text>
-    <text x="20" y="36" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">Transformed</text>`;
-  const types=[['translate','Translate'],['reflect-x','Reflect (x)'],['reflect-y','Reflect (y)'],['rotate','Rotate'],['enlarge','Enlarge']];
-  const tabs=types.map(([t,l])=>`<button class="tab-btn ${type===t?'active':''}" onclick="state.trans.type='${t}';render()" style="font-size:12px">${l}</button>`).join('');
+    <polygon points="${pts}" fill="rgba(99,102,241,.15)" stroke="#818cf8" stroke-width="2" stroke-dasharray="6,4"/>
+    <polygon points="${tpts}" fill="rgba(16,185,129,.2)" stroke="#34d399" stroke-width="2.5"/>
+    <text x="8" y="18" fill="#818cf8" font-size="11" font-weight="600" font-family="Space Grotesk">▣ Original</text>
+    <text x="8" y="34" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">▣ Transformed</text>`;
+  const typeList=[['translate','Translate'],['reflect-x','Reflect x-axis'],['reflect-y','Reflect y-axis'],['rotate','Rotate'],['enlarge','Enlarge']];
   let controls='';
-  if(type==='translate') controls=slider('x shift (tx)','#818cf8',tx,-6,6,1,'trans-tx')+slider('y shift (ty)','#34d399',ty,-6,6,1,'trans-ty');
-  else if(type==='rotate') controls=slider('Angle (°)','#818cf8',angle,0,360,15,'trans-angle');
-  else if(type==='enlarge') controls=slider('Scale factor','#818cf8',sf,0.5,4,0.5,'trans-sf');
-  return pageWrap('2D Transformations','🔄','See how shapes transform on the coordinate grid.',`
-    <div style="display:flex;gap:6px;margin-bottom:20px;background:rgba(15,23,42,0.6);padding:6px;border-radius:10px;border:1px solid rgba(99,102,241,0.15);flex-wrap:wrap">${tabs}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
-      <div>${svgWrap(inner,W,H,'svg-trans')}</div>
-      <div style="display:flex;flex-direction:column;gap:14px">
-        ${controls?`<div class="card" style="padding:20px">${controls}</div>`:''}
-        ${formulaBox('Transformation',type,'Blue → Green','indigo')}
-        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(99,102,241,0.1);border-radius:12px;padding:16px">
-          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:8px">Transformed Vertices</div>
-          ${transformed.map((p,i)=>`<div style="font-size:13px;color:#94a3b8">P${i+1}: (${p.x}, ${p.y})</div>`).join('')}
+  if(type==='translate') controls=SI('x shift (tx)','#818cf8',tx,-8,8,1,'trans','tx')+SI('y shift (ty)','#34d399',ty,-8,8,1,'trans','ty');
+  else if(type==='rotate') controls=SI('Angle (°)','#818cf8',angle,0,360,15,'trans','angle')+SI('Centre x','#f59e0b',rcx,-5,5,1,'trans','cx')+SI('Centre y','#f43f5e',rcy,-5,5,1,'trans','cy');
+  else if(type==='enlarge') controls=SI('Scale factor','#818cf8',sf,0.5,4,.5,'trans','sf')+SI('Centre x','#f59e0b',rcx,-5,5,1,'trans','cx')+SI('Centre y','#f43f5e',rcy,-5,5,1,'trans','cy');
+  const desc={translate:`Translate by vector (${tx}, ${ty})`,'reflect-x':'Reflect in the x-axis (y=0)','reflect-y':'Reflect in the y-axis (x=0)',rotate:`Rotate ${angle}° anticlockwise about (${rcx},${rcy})`,enlarge:`Enlarge by scale factor ${sf} about (${rcx},${rcy})`};
+  return pageWrap('2D Transformations','🔄','Select a transformation type and adjust parameters.',`
+    ${tabs(typeList,type,"S.trans.type=__V__;rerender()")}
+    <div class="two-col">
+      ${makeSVG(inner,'svg-trans')}
+      <div class="ctrl-col">
+        ${controls?`<div class="card">${controls}</div>`:''}
+        ${fbox('Transformation',desc[type],'Blue → Green','indigo')}
+        <div class="info-box">
+          <div class="info-label">Transformed Vertices</div>
+          ${transformed.map((p,i)=>`<div style="font-size:13px;color:#94a3b8" class="mono">P${i+1}: (${p.x}, ${p.y})</div>`).join('')}
         </div>
       </div>
     </div>`);
 }
 
-// ─── PAGE WRAPPER ─────────────────────────────────────────────────────────────
-function pageWrap(title, icon, subtitle, content) {
-  return `<div style="min-height:100vh;padding:24px 16px;max-width:960px;margin:0 auto">
-    <button class="back-btn" onclick="navigate('dashboard')">← Back to Topics</button>
-    <div style="margin-bottom:24px">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
-        <div style="width:40px;height:40px;border-radius:12px;background:rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:center;font-size:20px">${icon}</div>
-        <h1 style="font-size:clamp(18px,3vw,26px);font-weight:700;color:#f1f5f9;margin:0">${title}</h1>
+// ═══════════════════════════════════════════════════════════════════
+// PERCENTAGES (NEW)
+// ═══════════════════════════════════════════════════════════════════
+function renderPercentages(){
+  const {original:orig,pctChange:pct,dir,findType}=S.pct;
+  let result, formula, stepArr;
+  if(findType==='new'){
+    const mult=dir==='increase'?1+pct/100:1-pct/100;
+    result=r2(orig*mult);
+    formula=dir==='increase'?`${orig} × (1 + ${pct}/100)`:`${orig} × (1 − ${pct}/100)`;
+    stepArr=[
+      {t:'Identify original and percentage',c:`Original = ${orig}, Change = ${pct}%`},
+      {t:'Convert % to multiplier',c:dir==='increase'?`1 + ${pct}/100 = ${mult}`:`1 − ${pct}/100 = ${mult}`},
+      {t:'Multiply',c:`${orig} × ${mult} = ${result}`},
+      {t:'New value',c:`After ${pct}% ${dir}: ${result}`},
+    ];
+  } else if(findType==='change'){
+    result=r2(pct/100*orig);
+    formula=`${pct}/100 × ${orig}`;
+    stepArr=[
+      {t:'Find percentage amount',c:`${pct}% of ${orig}`},
+      {t:'Convert to decimal',c:`${pct} ÷ 100 = ${pct/100}`},
+      {t:'Multiply by original',c:`${pct/100} × ${orig} = ${result}`},
+    ];
+  } else {
+    // reverse: original is the "new value", find the original
+    const mult=dir==='increase'?1+pct/100:1-pct/100;
+    result=r2(orig/mult);
+    formula=dir==='increase'?`${orig} ÷ (1 + ${pct}/100)`:`${orig} ÷ (1 − ${pct}/100)`;
+    stepArr=[
+      {t:'New value after '+pct+'% '+dir,c:`New value = ${orig}`},
+      {t:'Multiplier',c:dir==='increase'?`1 + ${pct}/100 = ${mult}`:`1 − ${pct}/100 = ${mult}`},
+      {t:'Divide to reverse',c:`${orig} ÷ ${mult} = ${result}`},
+      {t:'Original value',c:`Original = ${result}`},
+    ];
+  }
+  // Visual bar
+  const barPct=Math.min(100,Math.max(0,pct));
+  const barColor=dir==='increase'?'#10b981':'#f43f5e';
+  return pageWrap('Percentages','%','Work out percentage change, amounts and reverse percentages.',`
+    ${tabs([['new','New Value'],['change','% Amount'],['reverse','Reverse %']],findType,"S.pct.findType=__V__;rerender()")}
+    <div class="two-col">
+      <div class="ctrl-col">
+        <div class="card">
+          ${SI('Original Value','#818cf8',orig,1,1000,1,'pct','original')}
+          ${SI('Percentage (%)','#f59e0b',pct,1,200,1,'pct','pctChange')}
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn-tab${dir==='increase'?' active':''}" onclick="S.pct.dir='increase';rerender()">Increase</button>
+            <button class="btn btn-tab${dir==='decrease'?' active':''}" onclick="S.pct.dir='decrease';rerender()">Decrease</button>
+          </div>
+        </div>
+        <!-- Visual bar -->
+        <div class="info-box">
+          <div class="info-label">Visual</div>
+          <div style="background:#1e293b;border-radius:6px;height:24px;position:relative;overflow:hidden;margin-bottom:8px">
+            <div style="width:${Math.min(100,orig/10)}%;background:#475569;height:100%"></div>
+          </div>
+          <div style="font-size:12px;color:#64748b">Original: ${orig}</div>
+          <div style="background:#1e293b;border-radius:6px;height:24px;position:relative;overflow:hidden;margin-top:6px">
+            <div style="width:${Math.min(100,result/10)}%;background:${barColor};height:100%;transition:width .3s"></div>
+          </div>
+          <div style="font-size:12px;color:${barColor};margin-top:4px">Result: ${result}</div>
+        </div>
       </div>
-      <p style="color:#64748b;font-size:14px;margin-left:52px">${subtitle}</p>
-    </div>
-    ${content}
-  </div>`;
+      <div class="ctrl-col">
+        ${fbox(findType==='new'?`New value after ${pct}% ${dir}`:findType==='change'?`${pct}% of ${orig}`:`Original before ${pct}% ${dir}`,formula,result,dir==='increase'?'emerald':'rose')}
+        ${steps(stepArr)}
+      </div>
+    </div>`);
 }
 
-// ─── RENDER ───────────────────────────────────────────────────────────────────
-function render() {
-  const pages = {
-    dashboard: renderDashboard,
-    gradient: renderGradient,
-    midpoint: renderMidpoint,
-    bearings: renderBearings,
-    area: renderArea,
-    prisms: renderPrisms,
-    linear: renderLinear,
-    units: renderUnits,
-    parallelogram: renderParallelogram,
-    transformations: renderTransformations,
-  };
-  document.getElementById('app').innerHTML = (pages[currentPage]||renderDashboard)();
-  
-  // Init dragging after render
-  setTimeout(() => {
-    if(currentPage==='gradient') initDragging('svg-grad', state.grad, (id,x,y)=>{
-      if(id==='grad-A') state.grad.A={x,y}; else state.grad.B={x,y}; render();
-    });
-    if(currentPage==='midpoint') initDragging('svg-mid', state.mid, (id,x,y)=>{
-      if(id==='mid-A') state.mid.A={x,y}; else state.mid.B={x,y}; render();
-    });
-    if(currentPage==='bearings') initDragging('svg-bear', state.bear, (id,x,y)=>{
-      if(id==='bear-A') state.bear.A={x,y}; else state.bear.B={x,y}; render();
-    });
-    if(currentPage==='area') {
-      const s=state.area;
-      initDragging('svg-area', {}, (id,x,y)=>{
-        if(id==='area-triA') s.triA={x,y};
-        else if(id==='area-triB') s.triB={x,y};
-        else if(id==='area-triC') s.triC={x,y};
-        else if(id==='area-rectA') s.rectA={x,y};
-        else if(id==='area-rectB') s.rectB={x,y};
-        render();
-      });
-    }
-  }, 50);
+// ═══════════════════════════════════════════════════════════════════
+// RATIO & PROPORTION (NEW)
+// ═══════════════════════════════════════════════════════════════════
+function renderRatio(){
+  const {a,b,total,simplA,simplB}=S.ratio;
+  const shareA=r2(total*a/(a+b)), shareB=r2(total*b/(a+b));
+  const g=gcd(simplA,simplB);
+  const sA=simplA/g, sB=simplB/g;
+  const wA=Math.round(a/(a+b)*100), wB=100-wA;
+  return pageWrap('Ratio & Proportion','⚖️','Share amounts in a ratio and simplify ratios.',`
+    ${tabs([['share','Share Amount'],['simplify','Simplify Ratio']],S.ratio.mode||'share',"S.ratio.mode=__V__;rerender()")}
+    <div class="two-col">
+      <div class="ctrl-col">
+        ${(S.ratio.mode||'share')==='share'?`
+        <div class="card">
+          ${SI('Ratio Part A','#818cf8',a,1,20,1,'ratio','a')}
+          ${SI('Ratio Part B','#34d399',b,1,20,1,'ratio','b')}
+          ${SI('Total Amount','#f59e0b',total,1,1000,10,'ratio','total')}
+        </div>
+        <div class="info-box">
+          <div class="info-label">Visual Split</div>
+          <div style="display:flex;border-radius:8px;overflow:hidden;height:32px;margin-bottom:8px">
+            <div style="width:${wA}%;background:#818cf8;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${a}</div>
+            <div style="width:${wB}%;background:#34d399;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">${b}</div>
+          </div>
+          <div style="font-size:12px;color:#64748b">Ratio ${a} : ${b} (total parts = ${a+b})</div>
+        </div>`:`
+        <div class="card">
+          ${SI('First Number','#818cf8',simplA,1,200,1,'ratio','simplA')}
+          ${SI('Second Number','#34d399',simplB,1,200,1,'ratio','simplB')}
+        </div>
+        <div class="info-box">
+          <div class="info-label">GCD Calculation</div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.8">HCF of ${simplA} and ${simplB} = ${g}<br>
+          ${simplA} ÷ ${g} = ${sA}<br>
+          ${simplB} ÷ ${g} = ${sB}</div>
+        </div>`}
+      </div>
+      <div class="ctrl-col">
+        ${(S.ratio.mode||'share')==='share'?
+          fbox(`Share ${total} in ratio ${a}:${b}`,`Each part = ${total} ÷ ${a+b} = ${r2(total/(a+b))}`,`A gets ${shareA}, B gets ${shareB}`,'indigo')+
+          steps([
+            {t:'Add ratio parts',c:`${a} + ${b} = ${a+b} parts total`},
+            {t:'Value of one part',c:`${total} ÷ ${a+b} = ${r2(total/(a+b))}`},
+            {t:'Share A',c:`${a} × ${r2(total/(a+b))} = ${shareA}`},
+            {t:'Share B',c:`${b} × ${r2(total/(a+b))} = ${shareB}`},
+          ]):
+          fbox(`Simplify ${simplA} : ${simplB}`,'Divide both by HCF',`${sA} : ${sB}`,'emerald')+
+          steps([
+            {t:'Find HCF',c:`HCF of ${simplA} and ${simplB} = ${g}`},
+            {t:'Divide first',c:`${simplA} ÷ ${g} = ${sA}`},
+            {t:'Divide second',c:`${simplB} ÷ ${g} = ${sB}`},
+            {t:'Simplified ratio',c:`${sA} : ${sB}`},
+          ])
+        }
+      </div>
+    </div>`);
 }
 
-window.navigate = navigate;
-window.state = state;
-render();
+// ═══════════════════════════════════════════════════════════════════
+// PROBABILITY (NEW)
+// ═══════════════════════════════════════════════════════════════════
+function renderProbability(){
+  const {mode,balls,picked}=S.prob;
+  const colorMap={red:'#f43f5e',blue:'#6366f1',green:'#10b981',yellow:'#f59e0b',purple:'#a78bfa'};
+  const colorNames=Object.keys(colorMap);
+  const counts={};
+  balls.forEach(b=>counts[b]=(counts[b]||0)+1);
+  const total=balls.length;
+
+  // Single event
+  const singleProbs=Object.entries(counts).map(([col,cnt])=>({
+    col, cnt, prob:`${cnt}/${total}`, dec:r2(cnt/total)
+  }));
+
+  // Combined (two draws with replacement)
+  let combinedHTML='';
+  if(mode==='combined'){
+    combinedHTML=`<div class="info-box" style="margin-top:12px">
+      <div class="info-label">Two Draws (with replacement)</div>
+      ${singleProbs.slice(0,3).map(p=>`
+        <div style="font-size:13px;color:#94a3b8;margin-bottom:4px">
+          P(${p.col} then ${p.col}) = ${p.cnt}/${total} × ${p.cnt}/${total} = <span style="color:${colorMap[p.col]};font-weight:700">${r2((p.cnt/total)*(p.cnt/total))}</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  return pageWrap('Probability','🎲','Explore probability with coloured balls.',`
+    ${tabs([['single','Single Event'],['combined','Combined Events']],mode,"S.prob.mode=__V__;rerender()")}
+    <div class="two-col">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="info-label" style="margin-bottom:12px">Bag of Balls (click to remove, + to add)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+            ${balls.map((col,i)=>`
+              <div class="prob-ball" style="background:${colorMap[col]};border-color:${colorMap[col]}"
+                onclick="S.prob.balls.splice(${i},1);rerender()" title="Click to remove">${col[0].toUpperCase()}</div>
+            `).join('')}
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${colorNames.map(col=>`
+              <button class="btn" style="background:${colorMap[col]}22;border:1px solid ${colorMap[col]}55;color:${colorMap[col]};font-size:12px"
+                onclick="if(S.prob.balls.length<20)S.prob.balls.push('${col}');rerender()">+ ${col}</button>
+            `).join('')}
+          </div>
+        </div>
+        <div class="info-box">
+          <div class="info-label">Ball Counts</div>
+          ${Object.entries(counts).map(([col,cnt])=>`
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:14px;height:14px;border-radius:50%;background:${colorMap[col]}"></div>
+                <span style="font-size:13px;color:#e2e8f0">${col}</span>
+              </div>
+              <span class="mono" style="font-size:13px;color:${colorMap[col]}">${cnt}/${total} = ${r2(cnt/total)}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="ctrl-col">
+        ${singleProbs.map(p=>fbox(`P(${p.col})`,`${p.cnt} ${p.col} out of ${total}`,p.prob+' = '+p.dec,p.col==='red'?'rose':p.col==='blue'?'indigo':p.col==='green'?'emerald':'amber')).join('')}
+        ${combinedHTML}
+        ${steps([
+          {t:'Count total balls',c:`Total = ${total} balls`},
+          {t:'Count favourable',c:singleProbs.map(p=>`${p.col}: ${p.cnt}`).join(', ')},
+          {t:'Write probability',c:singleProbs.map(p=>`P(${p.col}) = ${p.prob} = ${p.dec}`).join(' | ')},
+        ])}
+      </div>
+    </div>`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CIRCLES (NEW)
+// ═══════════════════════════════════════════════════════════════════
+function renderCircles(){
+  const {r,mode,sector}=S.circle;
+  const PI=Math.PI;
+  const area=r2(PI*r*r), circ=r2(2*PI*r);
+  const arcLen=r2((sector/360)*2*PI*r);
+  const secArea=r2((sector/360)*PI*r*r);
+  const svgW=320, svgH=320, cx=160, cy=160;
+  const scale=Math.min(130/r,14);
+  const svgR=r*scale;
+  const angRad=(sector-90)*PI/180;
+  const secX=cx+svgR*Math.cos(-PI/2);
+  const secY=cy+svgR*Math.sin(-PI/2);
+  const secX2=cx+svgR*Math.cos(angRad-PI/2);
+  const secY2=cy+svgR*Math.sin(angRad-PI/2);
+  const lg=sector>180?1:0;
+  const circleSVG=`<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="background:#060b14;border-radius:12px;display:block;max-width:100%">
+    ${mode==='sector'?`
+      <path d="M ${cx} ${cy} L ${secX} ${secY} A ${svgR} ${svgR} 0 ${lg} 1 ${secX2} ${secY2} Z"
+        fill="rgba(99,102,241,.25)" stroke="#818cf8" stroke-width="2"/>
+      <circle cx="${cx}" cy="${cy}" r="${svgR}" fill="none" stroke="#334155" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <line x1="${cx}" y1="${cy}" x2="${secX}" y2="${secY}" stroke="#818cf8" stroke-width="1.5"/>
+      <line x1="${cx}" y1="${cy}" x2="${secX2}" y2="${secY2}" stroke="#818cf8" stroke-width="1.5"/>
+      <text x="${cx}" y="${cy+svgR/2}" text-anchor="middle" fill="#818cf8" font-size="12" font-weight="600" font-family="Space Grotesk">${sector}°</text>`:`
+      <circle cx="${cx}" cy="${cy}" r="${svgR}" fill="rgba(99,102,241,.15)" stroke="#818cf8" stroke-width="2.5"/>
+      <line x1="${cx}" y1="${cy}" x2="${cx+svgR}" y2="${cy}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="${cx+svgR/2}" y="${cy-8}" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="600" font-family="Space Grotesk">r=${r}</text>`}
+    <circle cx="${cx}" cy="${cy}" r="4" fill="#f43f5e"/>
+  </svg>`;
+  return pageWrap('Circles','⭕','Explore circle calculations interactively.',`
+    ${tabs([['full','Full Circle'],['sector','Sector']],mode,"S.circle.mode=__V__;rerender()")}
+    <div class="two-col">
+      <div>
+        ${circleSVG}
+        <div class="card" style="margin-top:16px">
+          ${SI('Radius (r)','#818cf8',r,1,15,0.5,'circle','r')}
+          ${mode==='sector'?SI('Sector Angle (°)','#f59e0b',sector,1,360,5,'circle','sector'):''}
+        </div>
+      </div>
+      <div class="ctrl-col">
+        ${mode==='full'?`
+          ${fbox('Area','A = π × r²',area+' sq units','indigo')}
+          ${fbox('Circumference','C = 2 × π × r',circ+' units','emerald')}
+          ${steps([
+            {t:'Area formula',c:'A = π × r²'},
+            {t:'Substitute r',c:`A = π × ${r}² = π × ${r*r}`},
+            {t:'Calculate',c:`A = ${area} sq units`},
+            {t:'Circumference',c:`C = 2 × π × ${r} = ${circ} units`},
+          ])}`:
+          `${fbox('Arc Length','L = (θ/360) × 2πr',arcLen+' units','indigo')}
+          ${fbox('Sector Area','A = (θ/360) × πr²',secArea+' sq units','emerald')}
+          ${steps([
+            {t:'Fraction of circle',c:`${sector}/360 = ${r2(sector/360)}`},
+            {t:'Arc length',c:`${r2(sector/360)} × 2π × ${r} = ${arcLen}`},
+            {t:'Sector area',c:`${r2(sector/360)} × π × ${r}² = ${secArea}`},
+          ])}`}
+        <div class="info-box">
+          <div class="info-label">Circle Facts</div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.8">
+            π ≈ 3.14159<br>
+            Diameter = 2r = ${r2(2*r)}<br>
+            Area = ${area} | Circumference = ${circ}
+          </div>
+        </div>
+      </div>
+    </div>`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════════════════════════════════
+const PAGES = {
+  dashboard: renderDashboard,
+  gradient: renderGradient,
+  midpoint: renderMidpoint,
+  bearings: renderBearings,
+  area: renderArea,
+  prisms: renderPrisms,
+  linear: renderLinear,
+  units: renderUnits,
+  parallelogram: renderParallelogram,
+  transformations: renderTransformations,
+  percentages: renderPercentages,
+  ratio: renderRatio,
+  probability: renderProbability,
+  circles: renderCircles,
+};
+
+function navigate(page){
+  if(_dragCleanup){ _dragCleanup(); _dragCleanup=null; }
+  PAGE=page;
+  window.scrollTo(0,0);
+  rerender();
+}
+
+function rerender(){
+  document.getElementById('app').innerHTML=(PAGES[PAGE]||renderDashboard)();
+  // sync all sliders with their number inputs after render
+  document.querySelectorAll('input[type=range]').forEach(sl=>{
+    const numInput=sl.closest('.si-controls')?.previousElementSibling?.querySelector('input[type=number]');
+    if(numInput) numInput.value=sl.value;
+  });
+}
+
+window.navigate=navigate;
+window.rerender=rerender;
+window.S=S;
+
+rerender();
 </script>
 </body>
 </html>
