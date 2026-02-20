@@ -1,44 +1,678 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ronin's Maths Interactive Tool</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              brand: {
-                50: '#f0f9ff',
-                100: '#e0f2fe',
-                200: '#bae6fd',
-                300: '#7dd3fc',
-                400: '#38bdf8',
-                500: '#0ea5e9',
-                600: '#0284c7',
-                700: '#0369a1',
-                800: '#075985',
-                900: '#0c4a6e',
-              }
-            },
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              mono: ['Fira Code', 'monospace'],
-            }
-          }
-        }
-      }
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-      body { font-family: 'Inter', sans-serif; }
-    </style>
-  </head>
-  <body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ronin's Maths Interactive Tool</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Space Grotesk', sans-serif; box-sizing: border-box; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    body { background: #080d1a; color: #e2e8f0; margin: 0; }
+    .grid-bg {
+      background-image: linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    input[type=range] { -webkit-appearance: none; appearance: none; height: 4px; border-radius: 4px; background: #1e293b; outline: none; }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #6366f1; cursor: pointer; border: 2px solid #fff; }
+    .tab-btn { padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+    .tab-btn.active { background: rgba(99,102,241,0.25); color: #a5b4fc; }
+    .tab-btn:not(.active) { background: transparent; color: #64748b; }
+    .tab-btn:hover:not(.active) { color: #94a3b8; }
+    .card { background: rgba(15,23,42,0.8); border: 1px solid rgba(99,102,241,0.15); border-radius: 16px; }
+    .formula-box { border-radius: 12px; padding: 16px; }
+    .step { background: rgba(15,23,42,0.6); border: 1px solid rgba(99,102,241,0.1); border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; cursor: pointer; }
+    .step:hover { border-color: rgba(99,102,241,0.3); }
+    .back-btn { display: inline-flex; align-items: center; gap: 6px; color: #64748b; font-size: 14px; cursor: pointer; background: none; border: none; padding: 0; margin-bottom: 24px; transition: color 0.2s; }
+    .back-btn:hover { color: #e2e8f0; }
+    .topic-card { background: rgba(15,23,42,0.7); border: 1px solid rgba(99,102,241,0.12); border-radius: 16px; padding: 20px; cursor: pointer; transition: all 0.2s; }
+    .topic-card:hover { border-color: rgba(99,102,241,0.4); background: rgba(30,41,59,0.8); transform: translateY(-2px); }
+    svg text { user-select: none; }
+    .page { display: none; }
+    .page.active { display: block; }
+    .slider-wrap { margin-bottom: 16px; }
+    .slider-label { display: flex; justify-content: space-between; margin-bottom: 8px; }
+    input[type=range] { width: 100%; }
+  </style>
+</head>
+<body class="grid-bg min-h-screen">
+
+<div id="app"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let currentPage = 'dashboard';
+
+function navigate(page) {
+  currentPage = page;
+  render();
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function toSVG(x, y, W=400, H=400, range=10) {
+  const cell = W / (range * 2);
+  return { sx: W/2 + x*cell, sy: H/2 - y*cell };
+}
+function toMath(sx, sy, W=400, H=400, range=10) {
+  const cell = W / (range * 2);
+  return { x: (sx - W/2) / cell, y: (H/2 - sy) / cell };
+}
+function round1(v) { return Math.round(v*10)/10; }
+function round2(v) { return Math.round(v*100)/100; }
+
+// ─── COORDINATE GRID SVG ────────────────────────────────────────────────────
+function drawGrid(W=400, H=400, range=10) {
+  const cell = W / (range * 2);
+  const cx = W/2, cy = H/2;
+  let lines = '';
+  for (let i = -range; i <= range; i++) {
+    const x = cx + i*cell, y = cy + i*cell;
+    const isAxis = i === 0;
+    lines += `<line x1="${x}" y1="0" x2="${x}" y2="${H}" stroke="${isAxis?'#94a3b8':'#1e293b'}" stroke-width="${isAxis?2:0.5}"/>`;
+    lines += `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="${isAxis?'#94a3b8':'#1e293b'}" stroke-width="${isAxis?2:0.5}"/>`;
+    if (i !== 0 && i % 2 === 0) {
+      lines += `<text x="${x}" y="${cy+16}" text-anchor="middle" fill="#64748b" font-size="10" font-family="Space Grotesk">${i}</text>`;
+      lines += `<text x="${cx-12}" y="${y+4}" text-anchor="middle" fill="#64748b" font-size="10" font-family="Space Grotesk">${-i}</text>`;
+    }
+  }
+  lines += `<polygon points="${W-8},${cy-4} ${W},${cy} ${W-8},${cy+4}" fill="#94a3b8"/>`;
+  lines += `<polygon points="${cx-4},8 ${cx},0 ${cx+4},8" fill="#94a3b8"/>`;
+  lines += `<text x="${W-6}" y="${cy-10}" fill="#94a3b8" font-size="12" font-weight="600" text-anchor="end">x</text>`;
+  lines += `<text x="${cx+14}" y="14" fill="#94a3b8" font-size="12" font-weight="600">y</text>`;
+  lines += `<text x="${cx-10}" y="${cy+16}" fill="#64748b" font-size="10">O</text>`;
+  return lines;
+}
+
+function svgWrap(inner, W=400, H=400, id='') {
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" id="${id}" 
+    style="background:#0a0f1a;border-radius:12px;display:block;max-width:100%">
+    ${drawGrid(W,H)}${inner}</svg>`;
+}
+
+// ─── DRAGGABLE POINT ────────────────────────────────────────────────────────
+function draggablePoint(sx, sy, color, label='', id='', coords='') {
+  return `<g class="drag-point" data-id="${id}" style="cursor:grab">
+    <circle cx="${sx}" cy="${sy}" r="14" fill="${color}" opacity="0.15"/>
+    <circle cx="${sx}" cy="${sy}" r="7" fill="${color}" stroke="#fff" stroke-width="2"/>
+    ${label ? `<text x="${sx+12}" y="${sy-12}" fill="${color}" font-size="12" font-weight="700" font-family="Space Grotesk">${label}${coords}</text>` : ''}
+  </g>`;
+}
+
+// ─── FORMULA BOX ─────────────────────────────────────────────────────────────
+function formulaBox(title, formula, result, color='indigo') {
+  const colors = {
+    indigo: ['rgba(99,102,241,0.12)', 'rgba(99,102,241,0.3)', '#a5b4fc', '#818cf8'],
+    emerald: ['rgba(16,185,129,0.12)', 'rgba(16,185,129,0.3)', '#6ee7b7', '#34d399'],
+    amber: ['rgba(245,158,11,0.12)', 'rgba(245,158,11,0.3)', '#fcd34d', '#f59e0b'],
+    rose: ['rgba(244,63,94,0.12)', 'rgba(244,63,94,0.3)', '#fda4af', '#f43f5e'],
+  };
+  const [bg, border, text, accent] = colors[color]||colors.indigo;
+  return `<div style="background:${bg};border:1px solid ${border};border-radius:12px;padding:16px">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${accent};margin-bottom:6px">${title}</div>
+    <div class="mono" style="font-size:13px;color:#cbd5e1;margin-bottom:8px">${formula}</div>
+    ${result!==undefined?`<div style="font-size:20px;font-weight:700;color:${text}">${result}</div>`:''}
+  </div>`;
+}
+
+// ─── STEP BY STEP ──────────────────────────────────────────────────────────
+function stepByStep(steps) {
+  return steps.map((s,i)=>`
+    <div class="step" onclick="this.querySelector('.step-body').style.display=this.querySelector('.step-body').style.display==='none'?'block':'none'">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:13px;font-weight:600;color:#e2e8f0">Step ${i+1}: ${s.title}</div>
+        <span style="color:#64748b;font-size:12px">▼</span>
+      </div>
+      <div class="step-body mono" style="font-size:12px;color:#94a3b8;margin-top:8px;display:none">${s.content}</div>
+    </div>`).join('');
+}
+
+// ─── DRAGGING LOGIC ──────────────────────────────────────────────────────────
+let activeDrag = null;
+
+function initDragging(svgId, points, onUpdate, W=400, H=400, range=10) {
+  const svg = document.getElementById(svgId);
+  if (!svg) return;
+
+  function getSVGPos(e) {
+    const rect = svg.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return {
+      sx: (touch.clientX - rect.left) * (W / rect.width),
+      sy: (touch.clientY - rect.top) * (H / rect.height)
+    };
+  }
+
+  svg.querySelectorAll('.drag-point').forEach(g => {
+    const id = g.dataset.id;
+    const down = (e) => {
+      e.preventDefault();
+      activeDrag = id;
+      const move = (ev) => {
+        if (activeDrag !== id) return;
+        ev.preventDefault();
+        const pos = getSVGPos(ev);
+        const math = toMath(pos.sx, pos.sy, W, H, range);
+        const cx = Math.round(Math.max(-range+1, Math.min(range-1, math.x)));
+        const cy = Math.round(Math.max(-range+1, Math.min(range-1, math.y)));
+        onUpdate(id, cx, cy);
+      };
+      const up = () => {
+        activeDrag = null;
+        window.removeEventListener('mousemove', move);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('touchmove', move);
+        window.removeEventListener('touchend', up);
+      };
+      window.addEventListener('mousemove', move);
+      window.addEventListener('mouseup', up);
+      window.addEventListener('touchmove', move, {passive:false});
+      window.addEventListener('touchend', up);
+    };
+    g.addEventListener('mousedown', down);
+    g.addEventListener('touchstart', down, {passive:false});
+  });
+}
+
+// ─── PAGES STATE ──────────────────────────────────────────────────────────────
+const state = {
+  // Gradient
+  grad: { A: {x:-4,y:-3}, B: {x:4,y:4} },
+  // Midpoint
+  mid: { A: {x:-5,y:-3}, B: {x:5,y:4} },
+  // Bearings
+  bear: { A: {x:0,y:0}, B: {x:4,y:6} },
+  // Area
+  area: { shape:'triangle', triA:{x:-5,y:-4}, triB:{x:5,y:-4}, triC:{x:0,y:5},
+           rectA:{x:-4,y:-3}, rectB:{x:4,y:4} },
+  // Prism
+  prism: { base:4, height:3, depth:5 },
+  // Linear
+  linear: { m:1, c:0 },
+  // Unit converter
+  unit: { value:10, dir:'mi2km' },
+  // Transformations
+  trans: { type:'translate', shape:[{x:1,y:1},{x:4,y:1},{x:2.5,y:4}], tx:2, ty:1, rx:0, ry:0, angle:90, sx:0, sy:0, sf:2 },
+  // Parallelogram/Trapezium
+  para: { type:'parallelogram', b:6, h:4, a:3 },
+};
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const topics = [
+    { title:'Finding Gradient', desc:'Drag two points and watch the gradient update in real-time.', icon:'📈', page:'gradient', color:'#6366f1' },
+    { title:'Midpoint of a Line', desc:'Discover the middle point between two coordinates.', icon:'🎯', page:'midpoint', color:'#10b981' },
+    { title:'Bearings', desc:'Measure angles clockwise from North. Drag points to find bearings.', icon:'🧭', page:'bearings', color:'#6366f1' },
+    { title:'2D Transformations', desc:'Translate, reflect, rotate, and enlarge shapes interactively.', icon:'🔄', page:'transformations', color:'#f43f5e' },
+    { title:'Parallelogram & Trapezium', desc:'Calculate areas using the correct formulas. Adjust dimensions.', icon:'⬡', page:'parallelogram', color:'#f59e0b' },
+    { title:'Area of Shapes', desc:'Drag vertices to compute area of triangles, rectangles and more.', icon:'📐', page:'area', color:'#10b981' },
+    { title:'3D Prisms', desc:'Calculate volume and surface area. Adjust dimensions with sliders.', icon:'📦', page:'prisms', color:'#6366f1' },
+    { title:'Miles ↔ Kilometres', desc:'Convert between imperial and metric distance units.', icon:'↔️', page:'units', color:'#f43f5e' },
+    { title:'Linear Equations', desc:'Change m and c in y = mx + c and see the line move in real-time.', icon:'📉', page:'linear', color:'#f59e0b' },
+  ];
+  return `
+  <div class="min-h-screen p-4 md:p-8" style="max-width:900px;margin:0 auto">
+    <div style="margin-bottom:40px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:center;font-size:20px">🧮</div>
+        <h1 style="font-size:clamp(22px,4vw,30px);font-weight:700;color:#f1f5f9;margin:0">Ronin's Maths Interactive Tool</h1>
+      </div>
+      <p style="color:#64748b;font-size:14px;margin-left:52px">Cambridge IGCSE maths concepts brought to life — drag, explore, and learn.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+      ${topics.map(t=>`
+        <div class="topic-card" onclick="navigate('${t.page}')">
+          <div style="font-size:28px;margin-bottom:10px">${t.icon}</div>
+          <div style="font-weight:700;color:#f1f5f9;margin-bottom:6px;font-size:15px">${t.title}</div>
+          <div style="font-size:13px;color:#64748b;line-height:1.5">${t.desc}</div>
+        </div>`).join('')}
+    </div>
+    <p style="text-align:center;color:#1e293b;font-size:12px;margin-top:32px">Drag points on the graphs to explore • Adjust sliders to change dimensions</p>
+  </div>`;
+}
+
+// ─── GRADIENT ────────────────────────────────────────────────────────────────
+function renderGradient() {
+  const {A,B} = state.grad;
+  const W=400,H=400,range=10;
+  const svA=toSVG(A.x,A.y,W,H,range), svB=toSVG(B.x,B.y,W,H,range);
+  const dx=B.x-A.x, dy=B.y-A.y;
+  const m = dx===0 ? 'undefined' : round2(dy/dx);
+  const steps=[
+    {title:'Label the two points', content:`A = (${A.x}, ${A.y}), B = (${B.x}, ${B.y})`},
+    {title:'Find the rise (Δy)', content:`Δy = y₂ − y₁ = ${B.y} − ${A.y} = ${dy}`},
+    {title:'Find the run (Δx)', content:`Δx = x₂ − x₁ = ${B.x} − ${A.x} = ${dx}`},
+    {title:'Apply the formula', content:`m = Δy/Δx = ${dy}/${dx} = ${m}`},
+  ];
+  const inner=`
+    <line x1="${svA.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svB.sy}" stroke="#818cf8" stroke-width="2.5"/>
+    <line x1="${svA.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svA.sy}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <line x1="${svB.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svB.sy}" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <text x="${(svA.sx+svB.sx)/2}" y="${svA.sy+18}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">Δx = ${dx}</text>
+    <text x="${svB.sx+14}" y="${(svA.sy+svB.sy)/2}" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">Δy = ${dy}</text>
+    ${draggablePoint(svA.sx,svA.sy,'#818cf8','A',`grad-A`,` (${A.x},${A.y})`)}
+    ${draggablePoint(svB.sx,svB.sy,'#34d399','B',`grad-B`,` (${B.x},${B.y})`)}`;
+  return pageWrap('Finding Gradient','📈','Drag two points to compute the gradient (slope) of the line.',`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+      <div>${svgWrap(inner,W,H,'svg-grad')}</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${formulaBox('Gradient Formula','m = (y₂ − y₁) / (x₂ − x₁)',m==='undefined'?'Undefined (vertical)':m,'indigo')}
+        ${formulaBox('Rise (Δy)','y₂ − y₁',dy,'emerald')}
+        ${formulaBox('Run (Δx)','x₂ − x₁',dx,'amber')}
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-top:4px">Step-by-step</div>
+        ${stepByStep(steps)}
+      </div>
+    </div>`);
+}
+
+// ─── MIDPOINT ─────────────────────────────────────────────────────────────────
+function renderMidpoint() {
+  const {A,B} = state.mid;
+  const W=400,H=400,range=10;
+  const svA=toSVG(A.x,A.y,W,H,range), svB=toSVG(B.x,B.y,W,H,range);
+  const mx=round1((A.x+B.x)/2), my=round1((A.y+B.y)/2);
+  const svM=toSVG(mx,my,W,H,range);
+  const steps=[
+    {title:'Label the two points', content:`A = (${A.x}, ${A.y}), B = (${B.x}, ${B.y})`},
+    {title:'Add the x-coordinates and halve', content:`Mx = (${A.x} + ${B.x}) / 2 = ${mx}`},
+    {title:'Add the y-coordinates and halve', content:`My = (${A.y} + ${B.y}) / 2 = ${my}`},
+    {title:'Write the midpoint', content:`M = (${mx}, ${my})`},
+  ];
+  const inner=`
+    <line x1="${svA.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svB.sy}" stroke="#818cf8" stroke-width="2.5"/>
+    <circle cx="${svM.sx}" cy="${svM.sy}" r="8" fill="#fbbf24" stroke="#fff" stroke-width="2"/>
+    <text x="${svM.sx+12}" y="${svM.sy-10}" fill="#fbbf24" font-size="12" font-weight="700" font-family="Space Grotesk">M(${mx},${my})</text>
+    ${draggablePoint(svA.sx,svA.sy,'#818cf8','A','mid-A',` (${A.x},${A.y})`)}
+    ${draggablePoint(svB.sx,svB.sy,'#34d399','B','mid-B',` (${B.x},${B.y})`)}`;
+  return pageWrap('Midpoint of a Line','🎯','Drag points to find the midpoint M = ((x₁+x₂)/2, (y₁+y₂)/2).',`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+      <div>${svgWrap(inner,W,H,'svg-mid')}</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${formulaBox('Midpoint Formula','M = ((x₁+x₂)/2, (y₁+y₂)/2)',`(${mx}, ${my})`,'amber')}
+        ${formulaBox('x-coordinate','('+A.x+' + '+B.x+') / 2',mx,'indigo')}
+        ${formulaBox('y-coordinate','('+A.y+' + '+B.y+') / 2',my,'emerald')}
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-top:4px">Step-by-step</div>
+        ${stepByStep(steps)}
+      </div>
+    </div>`);
+}
+
+// ─── BEARINGS ─────────────────────────────────────────────────────────────────
+function renderBearings() {
+  const {A,B} = state.bear;
+  const W=400,H=400,range=10;
+  const svA=toSVG(A.x,A.y,W,H,range), svB=toSVG(B.x,B.y,W,H,range);
+  const svN=toSVG(A.x,A.y+3,W,H,range);
+  const dx=B.x-A.x, dy=B.y-A.y;
+  const dist=round2(Math.sqrt(dx*dx+dy*dy));
+  let angle=Math.atan2(dx,dy)*(180/Math.PI);
+  if(angle<0) angle+=360;
+  const bearing=Math.round(angle);
+  const bearStr=bearing.toString().padStart(3,'0');
+  const arcR=45, startA=-90, endA=startA+bearing;
+  const s0=startA*Math.PI/180, s1=endA*Math.PI/180;
+  const ax1=svA.sx+arcR*Math.cos(s0), ay1=svA.sy+arcR*Math.sin(s0);
+  const ax2=svA.sx+arcR*Math.cos(s1), ay2=svA.sy+arcR*Math.sin(s1);
+  const lg=bearing>180?1:0;
+  const steps=[
+    {title:'Mark origin A and target B', content:`A = (${A.x}, ${A.y}), B = (${B.x}, ${B.y})`},
+    {title:'Draw North line upward from A', content:'Bearings always measured from North (000°)'},
+    {title:'Measure clockwise to line AB', content:`Δx = ${dx}, Δy = ${dy} → atan2(${dx},${dy})`},
+    {title:'Three-figure bearing', content:`Bearing from A to B = ${bearStr}°`},
+  ];
+  const inner=`
+    <line x1="${svA.sx}" y1="${svA.sy}" x2="${svN.sx}" y2="${svN.sy}" stroke="#475569" stroke-width="2" stroke-dasharray="4,4"/>
+    <text x="${svN.sx}" y="${svN.sy-8}" text-anchor="middle" fill="#64748b" font-size="13" font-weight="700" font-family="Space Grotesk">N</text>
+    <line x1="${svA.sx}" y1="${svA.sy}" x2="${svB.sx}" y2="${svB.sy}" stroke="#818cf8" stroke-width="2.5"/>
+    <path d="M ${ax1} ${ay1} A ${arcR} ${arcR} 0 ${lg} 1 ${ax2} ${ay2}" fill="none" stroke="#fbbf24" stroke-width="2"/>
+    <text x="${svA.sx+52}" y="${svA.sy-12}" fill="#fbbf24" font-size="13" font-weight="700" font-family="Space Grotesk">${bearing}°</text>
+    ${draggablePoint(svA.sx,svA.sy,'#f43f5e','A','bear-A',` (${A.x},${A.y})`)}
+    ${draggablePoint(svB.sx,svB.sy,'#818cf8','B','bear-B',` (${B.x},${B.y})`)}`;
+  return pageWrap('Bearings','🧭','Drag points to find the bearing from A to B, measured clockwise from North.',`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+      <div>${svgWrap(inner,W,H,'svg-bear')}</div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${formulaBox('Bearing A → B','Measured clockwise from North',bearStr+'°','indigo')}
+        ${formulaBox('Distance','d = √(Δx² + Δy²)',dist+' units','emerald')}
+        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(99,102,241,0.1);border-radius:12px;padding:16px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:8px">Compass Points</div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.8">N = 000° &nbsp;|&nbsp; E = 090°<br>S = 180° &nbsp;|&nbsp; W = 270°</div>
+        </div>
+        ${stepByStep(steps)}
+      </div>
+    </div>`);
+}
+
+// ─── AREA ─────────────────────────────────────────────────────────────────────
+function renderArea() {
+  const s=state.area;
+  const W=400,H=400,range=10;
+  let svgInner='', formulae='';
+
+  if(s.shape==='triangle'){
+    const {triA:A,triB:B,triC:C}=s;
+    const svA=toSVG(A.x,A.y,W,H,range),svB=toSVG(B.x,B.y,W,H,range),svC=toSVG(C.x,C.y,W,H,range);
+    const area=Math.abs(A.x*(B.y-C.y)+B.x*(C.y-A.y)+C.x*(A.y-B.y))/2;
+    svgInner=`
+      <polygon points="${svA.sx},${svA.sy} ${svB.sx},${svB.sy} ${svC.sx},${svC.sy}" fill="#f59e0b" fill-opacity="0.12" stroke="#f59e0b" stroke-width="2"/>
+      ${draggablePoint(svA.sx,svA.sy,'#818cf8','A','area-triA',` (${A.x},${A.y})`)}
+      ${draggablePoint(svB.sx,svB.sy,'#34d399','B','area-triB',` (${B.x},${B.y})`)}
+      ${draggablePoint(svC.sx,svC.sy,'#f59e0b','C','area-triC',` (${C.x},${C.y})`)}`;
+    formulae=formulaBox('Triangle Area (Shoelace)','A = ½|x₁(y₂−y₃)+x₂(y₃−y₁)+x₃(y₁−y₂)|',area+' sq units','amber');
+  } else if(s.shape==='rectangle'){
+    const {rectA:A,rectB:B}=s;
+    const svA=toSVG(A.x,A.y,W,H,range),svB=toSVG(B.x,B.y,W,H,range);
+    const w=Math.abs(B.x-A.x),h=Math.abs(B.y-A.y),area=w*h;
+    const minX=Math.min(svA.sx,svB.sx),minY=Math.min(svA.sy,svB.sy);
+    svgInner=`
+      <rect x="${minX}" y="${minY}" width="${Math.abs(svB.sx-svA.sx)}" height="${Math.abs(svB.sy-svA.sy)}" fill="#818cf8" fill-opacity="0.12" stroke="#818cf8" stroke-width="2"/>
+      <text x="${minX+Math.abs(svB.sx-svA.sx)/2}" y="${Math.max(svA.sy,svB.sy)+18}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">w=${w}</text>
+      <text x="${Math.max(svA.sx,svB.sx)+14}" y="${minY+Math.abs(svB.sy-svA.sy)/2+4}" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">h=${h}</text>
+      ${draggablePoint(svA.sx,svA.sy,'#818cf8','A','area-rectA',` (${A.x},${A.y})`)}
+      ${draggablePoint(svB.sx,svB.sy,'#34d399','B','area-rectB',` (${B.x},${B.y})`)}`;
+    formulae=formulaBox('Rectangle Area','A = width × height',area+' sq units','indigo')+
+      `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        ${formulaBox('Width','|x₂−x₁|',w,'amber')}${formulaBox('Height','|y₂−y₁|',h,'emerald')}
+      </div>`;
+  }
+
+  const shapeBtns=['triangle','rectangle'].map(sh=>`
+    <button class="tab-btn ${s.shape===sh?'active':''}" onclick="state.area.shape='${sh}';render()">${sh.charAt(0).toUpperCase()+sh.slice(1)}</button>`).join('');
+
+  return pageWrap('Area of Shapes','📐','Drag the vertices to reshape and recalculate.',`
+    <div style="display:flex;gap:6px;margin-bottom:20px;background:rgba(15,23,42,0.6);padding:6px;border-radius:10px;border:1px solid rgba(99,102,241,0.15);width:fit-content">${shapeBtns}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+      <div>${svgWrap(svgInner,W,H,'svg-area')}</div>
+      <div style="display:flex;flex-direction:column;gap:12px">${formulae}</div>
+    </div>`);
+}
+
+// ─── PRISMS ─────────────────────────────────────────────────────────────────
+function renderPrisms() {
+  const {base,height,depth}=state.prism;
+  const triArea=(base*height)/2;
+  const vol=triArea*depth;
+  const hyp=Math.sqrt(base*base+height*height);
+  const sa=round2(2*triArea+base*depth+height*depth+hyp*depth);
+  const scale=15,cx=200,cy=180;
+  const bw=base*scale,th=height*scale,doff=depth*8;
+  const fTop={x:cx,y:cy-th},fL={x:cx-bw/2,y:cy},fR={x:cx+bw/2,y:cy};
+  const bTop={x:fTop.x+doff,y:fTop.y-doff*0.5},bL={x:fL.x+doff,y:fL.y-doff*0.5},bR={x:fR.x+doff,y:fR.y-doff*0.5};
+  const steps=[
+    {title:'Find area of triangular base',content:`A = ½ × ${base} × ${height} = ${triArea}`},
+    {title:'Multiply by depth',content:`Volume = ${triArea} × ${depth} = ${vol} cubic units`},
+    {title:'Surface area',content:`SA = 2 triangles + 3 rectangles = ${sa} sq units`},
+  ];
+  const prismSVG=`<svg width="400" height="300" viewBox="0 0 400 300" style="background:#0a0f1a;border-radius:12px;display:block;max-width:100%">
+    <defs><linearGradient id="pg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#4f46e5" stop-opacity="0.2"/>
+    </linearGradient></defs>
+    <polygon points="${fTop.x},${fTop.y} ${fL.x},${fL.y} ${fR.x},${fR.y}" fill="url(#pg)" stroke="#818cf8" stroke-width="2"/>
+    <polygon points="${bTop.x},${bTop.y} ${bL.x},${bL.y} ${bR.x},${bR.y}" fill="#4f46e5" fill-opacity="0.25" stroke="#818cf8" stroke-width="2" stroke-dasharray="4,4"/>
+    <line x1="${fTop.x}" y1="${fTop.y}" x2="${bTop.x}" y2="${bTop.y}" stroke="#818cf8" stroke-width="2"/>
+    <line x1="${fL.x}" y1="${fL.y}" x2="${bL.x}" y2="${bL.y}" stroke="#818cf8" stroke-width="2"/>
+    <line x1="${fR.x}" y1="${fR.y}" x2="${bR.x}" y2="${bR.y}" stroke="#818cf8" stroke-width="2"/>
+    <text x="${cx}" y="${cy+20}" text-anchor="middle" fill="#f59e0b" font-size="11" font-weight="600" font-family="Space Grotesk">base = ${base}</text>
+    <text x="${fR.x-8}" y="${(fR.y+fTop.y)/2}" fill="#10b981" font-size="11" font-weight="600" font-family="Space Grotesk">h = ${height}</text>
+    <text x="${(fL.x+bL.x)/2-10}" y="${(fL.y+bL.y)/2+5}" fill="#f43f5e" font-size="11" font-weight="600" font-family="Space Grotesk">depth = ${depth}</text>
+  </svg>`;
+  return pageWrap('3D Prisms','📦','Adjust the sliders to change dimensions and recalculate.',`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+      <div>${prismSVG}</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card" style="padding:20px">
+          ${slider('Triangle Base','#f59e0b',base,2,8,1,'prism-base')}
+          ${slider('Triangle Height','#10b981',height,2,8,1,'prism-height')}
+          ${slider('Prism Depth','#f43f5e',depth,2,10,1,'prism-depth')}
+        </div>
+        ${formulaBox('Volume','V = ½ × base × height × depth',vol+' cubic units','indigo')}
+        ${formulaBox('Surface Area','SA = 2 triangles + 3 rectangles',sa+' sq units','emerald')}
+        ${stepByStep(steps)}
+      </div>
+    </div>`);
+}
+
+function slider(label, color, val, min, max, step, id) {
+  return `<div class="slider-wrap">
+    <div class="slider-label">
+      <span style="font-size:13px;font-weight:600;color:${color}">${label}</span>
+      <span class="mono" style="font-size:13px;color:#f1f5f9">${val} units</span>
+    </div>
+    <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" oninput="handleSlider('${id}',this.value)">
+  </div>`;
+}
+
+function handleSlider(id, val) {
+  val = parseFloat(val);
+  if(id==='prism-base') state.prism.base=val;
+  if(id==='prism-height') state.prism.height=val;
+  if(id==='prism-depth') state.prism.depth=val;
+  if(id==='linear-m') state.linear.m=val;
+  if(id==='linear-c') state.linear.c=val;
+  if(id==='para-b') state.para.b=val;
+  if(id==='para-h') state.para.h=val;
+  if(id==='para-a') state.para.a=val;
+  if(id==='unit-val') state.unit.value=val;
+  if(id==='trans-tx') state.trans.tx=val;
+  if(id==='trans-ty') state.trans.ty=val;
+  if(id==='trans-angle') state.trans.angle=val;
+  if(id==='trans-sf') state.trans.sf=val;
+  render();
+}
+window.handleSlider = handleSlider;
+
+// ─── LINEAR EQUATIONS ────────────────────────────────────────────────────────
+function renderLinear() {
+  const {m,c}=state.linear;
+  const W=400,H=400,range=10;
+  const cell=W/(range*2);
+  // Compute line endpoints
+  const x1=-range,y1=m*x1+c;
+  const x2=range,y2=m*x2+c;
+  const sv1=toSVG(x1,y1,W,H,range),sv2=toSVG(x2,y2,W,H,range);
+  const yInt=toSVG(0,c,W,H,range);
+  const inner=`
+    <line x1="${sv1.sx}" y1="${sv1.sy}" x2="${sv2.sx}" y2="${sv2.sy}" stroke="#818cf8" stroke-width="2.5"/>
+    <circle cx="${yInt.sx}" cy="${yInt.sy}" r="6" fill="#fbbf24" stroke="#fff" stroke-width="2"/>
+    <text x="${yInt.sx+10}" y="${yInt.sy-10}" fill="#fbbf24" font-size="12" font-weight="600" font-family="Space Grotesk">y-int = ${c}</text>`;
+  return pageWrap('Linear Equations','📉',`Adjust m and c to see how y = mx + c changes.`,`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+      <div>${svgWrap(inner,W,H,'svg-linear')}</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card" style="padding:20px">
+          ${slider('Gradient (m)','#818cf8',m,-5,5,0.5,'linear-m')}
+          ${slider('y-intercept (c)','#fbbf24',c,-8,8,1,'linear-c')}
+        </div>
+        ${formulaBox('Equation','y = mx + c',`y = ${m}x + (${c})`,'indigo')}
+        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(99,102,241,0.1);border-radius:12px;padding:16px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:8px">Key Facts</div>
+          <div style="font-size:13px;color:#94a3b8;line-height:1.8">
+            • m = ${m} → line slopes ${m>0?'upward':'downward'}<br>
+            • c = ${c} → crosses y-axis at (0, ${c})<br>
+            • ${m===0?'Horizontal line':'Not horizontal'}
+          </div>
+        </div>
+      </div>
+    </div>`);
+}
+
+// ─── UNIT CONVERTER ──────────────────────────────────────────────────────────
+function renderUnits() {
+  const {value,dir}=state.unit;
+  const km=round2(value*1.60934), mi=round2(value/1.60934);
+  return pageWrap('Miles ↔ Kilometres','↔️','Convert between imperial and metric distance.',`
+    <div style="max-width:500px">
+      <div class="card" style="padding:24px;margin-bottom:20px">
+        ${slider('Value to convert','#818cf8',value,1,200,1,'unit-val')}
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="tab-btn ${dir==='mi2km'?'active':''}" onclick="state.unit.dir='mi2km';render()">Miles → Km</button>
+          <button class="tab-btn ${dir==='km2mi'?'active':''}" onclick="state.unit.dir='km2mi';render()">Km → Miles</button>
+        </div>
+      </div>
+      ${dir==='mi2km'
+        ? formulaBox('Miles to Kilometres',`${value} miles × 1.60934`,`= ${km} km`,'indigo')
+        : formulaBox('Kilometres to Miles',`${value} km ÷ 1.60934`,`= ${mi} miles`,'emerald')}
+      <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(99,102,241,0.1);border-radius:12px;padding:16px;margin-top:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:8px">Quick Reference</div>
+        <div style="font-size:13px;color:#94a3b8;line-height:1.8">
+          1 mile = 1.60934 km<br>
+          1 km = 0.62137 miles<br>
+          5 miles ≈ 8 km<br>
+          Marathon = 26.2 miles = 42.2 km
+        </div>
+      </div>
+    </div>`);
+}
+
+// ─── PARALLELOGRAM / TRAPEZIUM ───────────────────────────────────────────────
+function renderParallelogram() {
+  const {type,b,h,a}=state.para;
+  const W=360,H=280;
+  let area,formula,svgShape;
+  if(type==='parallelogram'){
+    area=b*h;
+    formula='A = base × height';
+    const ox=80,oy=180,slant=40;
+    svgShape=`<polygon points="${ox},${oy} ${ox+b*25},${oy} ${ox+b*25+slant},${oy-h*25} ${ox+slant},${oy-h*25}" fill="rgba(99,102,241,0.15)" stroke="#818cf8" stroke-width="2"/>
+      <line x1="${ox}" y1="${oy+15}" x2="${ox+b*25}" y2="${oy+15}" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="${ox+b*12}" y="${oy+28}" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="600" font-family="Space Grotesk">base = ${b}</text>
+      <line x1="${ox+b*25+slant+15}" y1="${oy}" x2="${ox+b*25+slant+15}" y2="${oy-h*25}" stroke="#10b981" stroke-width="1.5" stroke-dasharray="4,3"/>
+      <text x="${ox+b*25+slant+28}" y="${oy-h*12}" fill="#10b981" font-size="12" font-weight="600" font-family="Space Grotesk">h=${h}</text>`;
+  } else {
+    area=0.5*(b+a)*h;
+    formula='A = ½(a + b) × h';
+    const ox=60,oy=180,offset=30;
+    svgShape=`<polygon points="${ox+offset},${oy-h*25} ${ox+offset+a*25},${oy-h*25} ${ox+b*25},${oy} ${ox},${oy}" fill="rgba(244,63,94,0.15)" stroke="#f43f5e" stroke-width="2"/>
+      <line x1="${ox}" y1="${oy+15}" x2="${ox+b*25}" y2="${oy+15}" stroke="#f59e0b" stroke-width="1.5"/>
+      <text x="${ox+b*12}" y="${oy+28}" text-anchor="middle" fill="#f59e0b" font-size="12" font-weight="600" font-family="Space Grotesk">b = ${b}</text>
+      <line x1="${ox+offset}" y1="${oy-h*25-15}" x2="${ox+offset+a*25}" y2="${oy-h*25-15}" stroke="#818cf8" stroke-width="1.5"/>
+      <text x="${ox+offset+a*12}" y="${oy-h*25-22}" text-anchor="middle" fill="#818cf8" font-size="12" font-weight="600" font-family="Space Grotesk">a = ${a}</text>`;
+  }
+  const color=type==='parallelogram'?'indigo':'rose';
+  const tabs=['parallelogram','trapezium'].map(t=>`
+    <button class="tab-btn ${type===t?'active':''}" onclick="state.para.type='${t}';render()">${t.charAt(0).toUpperCase()+t.slice(1)}</button>`).join('');
+  return pageWrap('Parallelogram & Trapezium','⬡','Adjust dimensions to compute the area.',`
+    <div style="display:flex;gap:6px;margin-bottom:20px;background:rgba(15,23,42,0.6);padding:6px;border-radius:10px;border:1px solid rgba(99,102,241,0.15);width:fit-content">${tabs}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="background:#0a0f1a;border-radius:12px;display:block;max-width:100%">
+        ${svgShape}
+      </svg>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="card" style="padding:20px">
+          ${slider('Base (b)','#f59e0b',b,2,10,1,'para-b')}
+          ${slider('Height (h)','#10b981',h,2,8,1,'para-h')}
+          ${type==='trapezium'?slider('Top (a)','#818cf8',a,1,8,1,'para-a'):''}
+        </div>
+        ${formulaBox(type.charAt(0).toUpperCase()+type.slice(1)+' Area',formula,round2(area)+' sq units',color)}
+      </div>
+    </div>`);
+}
+
+// ─── TRANSFORMATIONS ─────────────────────────────────────────────────────────
+function renderTransformations() {
+  const {type,shape,tx,ty,rx,ry,angle,sx,sy,sf}=state.trans;
+  const W=400,H=400,range=10;
+  let transformed=[];
+  const rad=angle*Math.PI/180;
+  if(type==='translate') transformed=shape.map(p=>({x:p.x+tx,y:p.y+ty}));
+  else if(type==='reflect-x') transformed=shape.map(p=>({x:p.x,y:-p.y}));
+  else if(type==='reflect-y') transformed=shape.map(p=>({x:-p.x,y:p.y}));
+  else if(type==='rotate') transformed=shape.map(p=>({
+    x:round1((p.x-sx)*Math.cos(rad)-(p.y-sy)*Math.sin(rad)+sx),
+    y:round1((p.x-sx)*Math.sin(rad)+(p.y-sy)*Math.cos(rad)+sy)
+  }));
+  else if(type==='enlarge') transformed=shape.map(p=>({
+    x:round1(sx+(p.x-sx)*sf), y:round1(sy+(p.y-sy)*sf)
+  }));
+  const pts=shape.map(p=>{const s=toSVG(p.x,p.y,W,H,range);return `${s.sx},${s.sy}`;}).join(' ');
+  const tpts=transformed.map(p=>{const s=toSVG(p.x,p.y,W,H,range);return `${s.sx},${s.sy}`;}).join(' ');
+  const inner=`
+    <polygon points="${pts}" fill="rgba(99,102,241,0.15)" stroke="#818cf8" stroke-width="2" stroke-dasharray="5,3"/>
+    <polygon points="${tpts}" fill="rgba(16,185,129,0.2)" stroke="#34d399" stroke-width="2.5"/>
+    <text x="20" y="20" fill="#818cf8" font-size="11" font-weight="600" font-family="Space Grotesk">Original</text>
+    <text x="20" y="36" fill="#34d399" font-size="11" font-weight="600" font-family="Space Grotesk">Transformed</text>`;
+  const types=[['translate','Translate'],['reflect-x','Reflect (x)'],['reflect-y','Reflect (y)'],['rotate','Rotate'],['enlarge','Enlarge']];
+  const tabs=types.map(([t,l])=>`<button class="tab-btn ${type===t?'active':''}" onclick="state.trans.type='${t}';render()" style="font-size:12px">${l}</button>`).join('');
+  let controls='';
+  if(type==='translate') controls=slider('x shift (tx)','#818cf8',tx,-6,6,1,'trans-tx')+slider('y shift (ty)','#34d399',ty,-6,6,1,'trans-ty');
+  else if(type==='rotate') controls=slider('Angle (°)','#818cf8',angle,0,360,15,'trans-angle');
+  else if(type==='enlarge') controls=slider('Scale factor','#818cf8',sf,0.5,4,0.5,'trans-sf');
+  return pageWrap('2D Transformations','🔄','See how shapes transform on the coordinate grid.',`
+    <div style="display:flex;gap:6px;margin-bottom:20px;background:rgba(15,23,42,0.6);padding:6px;border-radius:10px;border:1px solid rgba(99,102,241,0.15);flex-wrap:wrap">${tabs}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+      <div>${svgWrap(inner,W,H,'svg-trans')}</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        ${controls?`<div class="card" style="padding:20px">${controls}</div>`:''}
+        ${formulaBox('Transformation',type,'Blue → Green','indigo')}
+        <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(99,102,241,0.1);border-radius:12px;padding:16px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:8px">Transformed Vertices</div>
+          ${transformed.map((p,i)=>`<div style="font-size:13px;color:#94a3b8">P${i+1}: (${p.x}, ${p.y})</div>`).join('')}
+        </div>
+      </div>
+    </div>`);
+}
+
+// ─── PAGE WRAPPER ─────────────────────────────────────────────────────────────
+function pageWrap(title, icon, subtitle, content) {
+  return `<div style="min-height:100vh;padding:24px 16px;max-width:960px;margin:0 auto">
+    <button class="back-btn" onclick="navigate('dashboard')">← Back to Topics</button>
+    <div style="margin-bottom:24px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(99,102,241,0.2);display:flex;align-items:center;justify-content:center;font-size:20px">${icon}</div>
+        <h1 style="font-size:clamp(18px,3vw,26px);font-weight:700;color:#f1f5f9;margin:0">${title}</h1>
+      </div>
+      <p style="color:#64748b;font-size:14px;margin-left:52px">${subtitle}</p>
+    </div>
+    ${content}
+  </div>`;
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function render() {
+  const pages = {
+    dashboard: renderDashboard,
+    gradient: renderGradient,
+    midpoint: renderMidpoint,
+    bearings: renderBearings,
+    area: renderArea,
+    prisms: renderPrisms,
+    linear: renderLinear,
+    units: renderUnits,
+    parallelogram: renderParallelogram,
+    transformations: renderTransformations,
+  };
+  document.getElementById('app').innerHTML = (pages[currentPage]||renderDashboard)();
+  
+  // Init dragging after render
+  setTimeout(() => {
+    if(currentPage==='gradient') initDragging('svg-grad', state.grad, (id,x,y)=>{
+      if(id==='grad-A') state.grad.A={x,y}; else state.grad.B={x,y}; render();
+    });
+    if(currentPage==='midpoint') initDragging('svg-mid', state.mid, (id,x,y)=>{
+      if(id==='mid-A') state.mid.A={x,y}; else state.mid.B={x,y}; render();
+    });
+    if(currentPage==='bearings') initDragging('svg-bear', state.bear, (id,x,y)=>{
+      if(id==='bear-A') state.bear.A={x,y}; else state.bear.B={x,y}; render();
+    });
+    if(currentPage==='area') {
+      const s=state.area;
+      initDragging('svg-area', {}, (id,x,y)=>{
+        if(id==='area-triA') s.triA={x,y};
+        else if(id==='area-triB') s.triB={x,y};
+        else if(id==='area-triC') s.triC={x,y};
+        else if(id==='area-rectA') s.rectA={x,y};
+        else if(id==='area-rectB') s.rectB={x,y};
+        render();
+      });
+    }
+  }, 50);
+}
+
+window.navigate = navigate;
+window.state = state;
+render();
+</script>
+</body>
 </html>
