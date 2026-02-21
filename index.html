@@ -1509,7 +1509,7 @@ function renderNth(){
       <div>
         <div class="card" style="margin-bottom:16px">
           <div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:8px">Enter sequence (comma-separated)</div>
-          <input class="seq-input" type="text" value="${st.sequence}" oninput="S.nth.sequence=this.value;rerender();" placeholder="e.g. 3, 7, 11, 15, 19">
+          <input class="seq-input" type="text" value="${st.sequence}" oninput="S.nth.sequence=this.value;" onchange="rerender();" placeholder="e.g. 3, 7, 11, 15, 19">
           <div style="font-size:11px;color:#475569;margin-top:6px">Enter at least 4–8 terms for best results</div>
         </div>
         ${ruleHTML}
@@ -1810,7 +1810,7 @@ function renderStemLeaf(){
       <div>
         <div class="card" style="margin-bottom:16px">
           <div style="font-size:13px;font-weight:600;color:#94a3b8;margin-bottom:8px">Enter data (0–99, comma-separated)</div>
-          <input class="seq-input" type="text" value="${raw}" oninput="S.stemleaf.data=this.value;rerender();" placeholder="e.g. 12,15,23,34,45">
+          <input class="seq-input" type="text" value="${raw}" oninput="S.stemleaf.data=this.value;" onchange="rerender();" placeholder="e.g. 12,15,23,34,45">
           ${outOfRange.length>0?`<div style="font-size:12px;color:#f59e0b;margin-top:6px">⚠ Removed ${outOfRange.length} value(s) outside 0–99: ${outOfRange.join(', ')}</div>`:''}
           ${nums.length===0?'<div style="font-size:12px;color:#f43f5e;margin-top:6px">⚠ No valid data entered. Use whole numbers 0–99.</div>':''}
         </div>
